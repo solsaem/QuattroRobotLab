@@ -23,7 +23,7 @@ def SIR_Algorithm(k, loops):
     plt.title('SIR Resampling Algorithm')
     plt.legend()
     plt.grid(True)
-    plt.savefig("img/p_x_k_"+str(k)+"_loops_"+str(loops)+".png")
+    plt.savefig("resq2/p_x_k_"+str(k)+"_loops_"+str(loops)+".png")
     plt.show()
 
     # SIR Algorithm
@@ -43,7 +43,7 @@ def SIR_Algorithm(k, loops):
     plt.title('SIR Resampling Algorithm with Estimated Distribution')
     plt.legend()
     plt.grid(True)
-    plt.savefig("img/p_x_k_"+str(k)+"_loops_"+str(loops)+"_2.png")
+    plt.savefig("resq2/p_x_k_"+str(k)+"_loops_"+str(loops)+"_2.png")
     plt.show()
 
 SIR_Algorithm(20, 1)

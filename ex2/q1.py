@@ -9,6 +9,7 @@ def SIR_Algorithm(k, loops):
     
     x_values = np.linspace(0, 15, k)
 
+    # Given probability density
     p_x = 0.3 * norm.pdf(x_values, loc=2.0, scale=1.0) + 0.4 * norm.pdf(x_values, loc=5.0, scale=2.0) + 0.3 * norm.pdf(x_values, loc=9.0, scale=1.0)
 
     q_x = np.random.uniform(0, 15, k) 
@@ -22,7 +23,7 @@ def SIR_Algorithm(k, loops):
     plt.title('SIR Resampling Algorithm')
     plt.legend()
     plt.grid(True)
-    plt.savefig("img/p_x_k_"+str(k)+"_loops_"+str(loops)+".png")
+    plt.savefig("resq1/p_x_k_"+str(k)+"_loops_"+str(loops)+".png")
     plt.show()
 
     # SIR Algorithm
@@ -31,6 +32,8 @@ def SIR_Algorithm(k, loops):
         weights *= np.interp(q_x, x_values, p_x) # Calculate importance weights based on the true distribution
         weights /= np.sum(weights)  # Normalize the weights
         # Resample particles based on weights
+
+        # 
         indices = np.random.choice(range(k), k, p=weights)
         q_x = q_x[indices]
         weights = np.ones(k) / k
@@ -42,7 +45,7 @@ def SIR_Algorithm(k, loops):
     plt.title('SIR Resampling Algorithm with Estimated Distribution')
     plt.legend()
     plt.grid(True)
-    plt.savefig("img/p_x_k_"+str(k)+"_loops_"+str(loops)+"_2.png")
+    plt.savefig("resq1/p_x_k_"+str(k)+"_loops_"+str(loops)+"_2.png")
     plt.show()
 
 SIR_Algorithm(20, 1)
