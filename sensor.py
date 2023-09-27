@@ -1,4 +1,5 @@
 
+
 from time import sleep
 import robot
 import Help_functions
@@ -20,10 +21,11 @@ while True:
     front = arlo.read_front_ping_sensor()
 
     print("Front sensor = ", front)
-
+    print("Left sensor = ", left)
+    print("Right sensor = ", right)
     while 600 < (arlo.read_left_ping_sensor() and arlo.read_right_ping_sensor() and arlo.read_front_ping_sensor()):
         print(arlo.go_diff(leftS, rightS, 1, 1))
-    
+    arlo.stop()
     left = arlo.read_left_ping_sensor() 
     right = arlo.read_right_ping_sensor()
     front = arlo.read_front_ping_sensor()
@@ -39,9 +41,7 @@ while True:
     elif right < left and front: 
         Help_functions.TurnXDegLeft(arlo, 90)
 
-    while arlo.read_front_ping_sensor() > 600:
-        print(arlo.go_diff(leftS, rightS, 1, 1))
-
+ 
 
 
 
@@ -62,3 +62,4 @@ while True:
     
 
  
+
