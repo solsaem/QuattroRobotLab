@@ -1,7 +1,7 @@
 from time import sleep
 import time
-from picamera2 import Picamera2, Preview
-import cv2
+#from picamera2 import Picamera2, Preview
+#import cv2
 import numpy as np
 #################################################################################
                     ### GLOBAL CONST VARIABLES ###                              #
@@ -10,7 +10,7 @@ SPEED_RT = 63.75                        # RIGHT MOTOR                           
 METER_TIME = 2.3                        # TIME TO DRIVE 1 METER                 #
 QUARTER_ROTATION_TIME = 0.725           # TIME TO DO QUARTER ROTATION           #
 QUARTER_MOVING_ROTATION_TIME = 1.45     # TIME TO DO QUARTER MOVING ROTATION    #
-CAMERA_MATRIX = np.array([[2047, 0, 1296], [0, 2047, 972], [0, 0, 1]])         #
+CAMERA_MATRIX = np.array([[2047, 0, 1296], [0, 2047, 972], [0, 0, 1]])          #
 #################################################################################
 
 ### Takes the robot object and the degrees it should turn (to the right) ###
@@ -55,7 +55,7 @@ def MovingTurn(rob, deg, dir): # dir = 1 (right turn); dir = -1 (left turn)
 
 ### Takes the robot position, robot radius, an object position, and object radius. Returns true if they don't collide)
 def Collision(robot_point, robot_radius, object_point, object_radius):
-    return sqrt((robot_point[0] - object_point[0]) ** 2 + (robot_point[1] - object_point[1]) ** 2) < (robot_radius + object_radius)
+    return np.sqrt((robot_point[0] - object_point[0]) ** 2 + (robot_point[1] - object_point[1]) ** 2) < (robot_radius + object_radius)
 
 ### Start the camera with high resolution and return the picam ### 
 def Camera_Init():
@@ -65,3 +65,8 @@ def Camera_Init():
     picam2.start()
     time.sleep(2)
     return picam2
+
+
+# Return True on collision
+def calc_dist(p1, p2, r1, r2):
+    return np.linalg.norm(np.array(p1) - np.array(p2)) <= r1 + r2

@@ -6,7 +6,7 @@ from picamera2 import Picamera2, Preview
 import cv2
 import time
 import numpy as np
-import grid_occ
+import ex4.grid_occ as grid_occ
 import matplotlib.pyplot as plt
 
 arlo = robot.Robot()
@@ -37,7 +37,7 @@ print(tvecs)
 #print("angle:")
 #angle = np.arccos(tvecs[0][0] / np.linalg.norm(tvecs[0][0]) * np.array([0,0,1]))
 
-points = [pos]
+points = []
 
 for list in tvecs:
 	for vector in list:
