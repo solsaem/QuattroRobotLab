@@ -1,6 +1,6 @@
 
 
-import Help_functions as hf
+import Help_Functions as hf
 import robot
 from picamera2 import Picamera2, Preview
 import cv2
@@ -41,7 +41,9 @@ path = pf.find_path(landmarks, goal, 100)
 path.reverse()
 path.append(goal)
 
-for i, point in enumerate(path):
+for i, point in enumerate(path, start=1):
 	angle = np.arccos((point - path[i-1]) / np.linalg.norm(point - path[i-1]) * np.array([0,1]))
-	if (i == 0):
-	    angle = np.arccos(point / np.linalg.norm(point) * np.array([0,1]))
+	# FIX LEFT OR RIGHT
+	hf.TurnXDegRight()
+	dist = np.linalg.norm(np.array(point), np.array(path[i-1]))
+	hf.GoXMeters(arlo, dist, 1, 1)
