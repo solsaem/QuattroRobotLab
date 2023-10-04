@@ -2,7 +2,7 @@
 # import cv2
 import time
 import numpy as np
-import ex4.grid_occ as grid_occ
+import grid_occ as grid_occ
 import matplotlib.pyplot as plt
 from matplotlib.animation import FFMpegWriter
 import sys
@@ -10,22 +10,24 @@ import sys
 
 
 # import robot
-import Help_Functions as hf
+import Help_functions as hf
 
-landmark_radius = 2
+landmark_radius = 3
 obstacles = 15
 
 
 def find_path(landmarks, goal, grid_size):
     robot_radius = 2.25
-    steps = 10
+    steps = 20
+
+    print("Landmarks: " + str(landmarks))
 
     robot_posX = 0
     robot_posY = 0
     robot_pos = [robot_posX, robot_posY]
     points = [[robot_pos,robot_pos]] # Index 0 in each inner list is a point. Index 1 is previous point.
     while True:
-        rand_point = [np.random.uniform(-100,grid_size), np.random.uniform(-10,grid_size)]
+        rand_point = [np.random.uniform(-40,40), np.random.uniform(0,100)]
 
         # Gets distances from all points to rand_point
         dists = []

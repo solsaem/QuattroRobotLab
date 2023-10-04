@@ -4,6 +4,7 @@ import robot
 
 arlo = robot.Robot()
 
-print(arlo.go_diff(63, 64, 1, 1))
-sleep(3)
+print(arlo.go_diff(61/2, 63.75/2, 0, 1))
+sleep(1.25)
 arlo.stop()
+
