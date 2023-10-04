@@ -1,7 +1,7 @@
 from time import sleep
 import time
-from picamera2 import Picamera2, Preview
-import cv2
+#from picamera2 import Picamera2, Preview
+#import cv2
 import numpy as np
 #################################################################################
                     ### GLOBAL CONST VARIABLES ###                              #
@@ -19,7 +19,7 @@ def TurnXDegLeft(rob, deg):
         TurnXDegRight(rob, abs(deg))
         return
     print(rob.go_diff(SPEED_LT/2, SPEED_RT/2, 0, 1))
-    sleep((deg*0.0211+0.0646)
+    sleep(deg*0.0211+0.0646)
     Stop(rob)
 
 ### Takes the robot object and the degrees it should turn (to the left) ###
@@ -28,7 +28,7 @@ def TurnXDegRight(rob, deg):
         TurnXDegLeft(rob, abs(deg))
         return
     print(rob.go_diff(SPEED_LT/2, SPEED_RT/2, 1, 0))
-    sleep((deg*0.0211+0.0646)
+    sleep(deg*0.0211+0.0646)
     Stop(rob)
 
 ### Takes the robot object, the distance, and direction (negative for backwards) ###
@@ -74,12 +74,9 @@ def Camera_Init():
 
 
 # Return True on collision
-def calc_dist(p1, p2, r1, r2):
+def check_collision(p1, p2, r1, r2):
     return np.linalg.norm(np.array(p1) - np.array(p2)) <= r1 + r2
-<<<<<<< Updated upstream
-=======
 
 # Calculates distance between two points
 def calculate_distance(p1, p2):
     return np.linalg.norm(np.array(p1) - np.array(p2))
->>>>>>> Stashed changes

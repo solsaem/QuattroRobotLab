@@ -10,7 +10,7 @@ import sys
 
 
 # import robot
-import Help_functions as hf
+import Help_Functions as hf
 
 landmark_radius = 3
 obstacles = 15
@@ -46,7 +46,7 @@ def find_path(landmarks, goal, grid_size):
             for i in range(0, steps + 1):
                 for landmark in landmarks:
                     temp = [rand_point[0] + (4/5 * (point[0][0] - rand_point[0])), rand_point[1] + (4/5 * (point[0][1] - rand_point[1]))]
-                    if (hf.calc_dist(([temp[0] + (i/steps * (point[0][0] - temp[0])), temp[1] + (i/steps * (point[0][1] - temp[1]))]), landmark, robot_radius, landmark_radius)):
+                    if (hf.check_distance(([temp[0] + (i/steps * (point[0][0] - temp[0])), temp[1] + (i/steps * (point[0][1] - temp[1]))]), landmark, robot_radius, landmark_radius)):
                         collision = True
             if collision == False:
                 points.append([temp, point[0]])
