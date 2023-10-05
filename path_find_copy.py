@@ -8,12 +8,16 @@ import sys
 # import robot
 import Help_Functions as hf
 
-LANDMARK_R = 10
+LANDMARK_R = 5
 OBSTACLES = 15
-ROBOT_R =  2.25
-STEPS = 10
+ROBOT_R =  5
+STEPS = 100
 ORIGIN = [0,0]
 MAX_DIST = 10
+Y_LIM_NEG = -30
+Y_LIM_POS = 100
+X_LIM_NEG = -100
+X_LIM_POS = 100
 
 
 # Function to normalize a point based on a maximum distance
@@ -30,115 +34,125 @@ def normalize_point(previous_point, current_point, max_distance):
     return normalized_point
 
 
+def sort_points(points, target):
+    dists = []
+    # go through all points and calculate each distance
+    for point in points:
+        dist = hf.calculate_distance(point[0], target)
+        dists.append(dist)
+    
+    zipped = zip(dists, points) # zip the distance list with the points array 
+    sortedZip = sorted(zipped) # sort the list from shortest to longest distance
+    _, sortedPoints = zip(*sortedZip) # unzip the list, so we are left with the points in order of distance from shortest to longest
+    return sortedPoints
+
+def find_final_path(points, origin, goal):
+    final_path = [[goal, points[-1][0]]]
+    final_path.append(points[-1])
+    # The while loop runs while the next point to add is not the origin
+    while final_path[-1][1] != origin:
+        print(final_path)
+        # We then run through all points in the list
+        for i in range(len(points)):
+            # Then we find the point in the list, that is equal to the point linked to the with the previous point found, and add it to the final path
+            if points[i][0] == final_path[-1][1]:
+                final_path.append(points[i])
+    return final_path
+
+def check_collisions_in_steps(new_p, prev_p, lmarks):
+    closest_valid_point = []
+    collision = False
+    for i in range(1,STEPS):
+        p = [(prev_p[0][0]+((new_p[0]-prev_p[0][0])*(i/STEPS))), (prev_p[0][1]+((new_p[1]-prev_p[0][1])*(i/STEPS)))]
+        for lmark in lmarks:
+            if(hf.check_collision(p, lmark, LANDMARK_R, ROBOT_R)):
+                collision = True
+    if not collision:
+        collision = False
+    return collision
+
+def smooth_path(path, lmarks, origin, goal):
+    temp = path
+    for i in range(len(temp)-1):
+        for j in range(i+1, len(temp)):
+            if not check_collisions_in_steps(temp[i][0], temp[j], lmarks):
+                temp[i][1] = temp[j][0]
+    return find_final_path(temp, origin, goal)
+
 ### Function for finding shortest path from origin to goal
-def find_path(origin, landmarks, goal, grid_size_x, grid_size_y):
+def find_path(origin, landmarks, goal, grid_size_x_neg, grid_size_x_pos, grid_size_y_neg, grid_size_y_pos):
     # Initiate points with one point (origin)
     points = [[origin, origin]]
     sortedPoints = [[origin, origin]]
 
     while True:
         ### Get a random point [int, int]
-        rand_point = [np.random.randint(-grid_size_x, grid_size_x), np.random.randint(0, grid_size_y)]
-        print("random point: " + str(rand_point))
+        rand_point = [np.random.randint(grid_size_x_neg, grid_size_x_pos), np.random.randint(grid_size_y_neg, grid_size_y_pos)]
 
-        ### Find the closest point
-        dists = []
+        sortedPoints = sort_points(points, rand_point)
 
-        # go through all points and calculate each distance
-        for point in points:
-            dist = hf.calculate_distance(point[0], rand_point)
-            print("dist: " + str(dist))
-            dists.append(dist)
-
-        # zip the distance list with the points array 
-        zipped = zip(dists, points)
-        # sort the list from shortest to longest distance
-        sortedZip = sorted(zipped)
-        print(sortedZip)
-        # unzip the list, so we are left with the points in order of distance from shortest to longest
-        _, sortedPoints  = zip(*sortedZip)
-
+        # Check for collisions (in steps)
         closest_valid_point = []
-        collision = False
         for p in sortedPoints:
             normal_p = normalize_point(p[0], rand_point, MAX_DIST)
-            collision = False
-            for i in range(STEPS):
-                for lmark in lmarks:
-                    if(hf.check_collision(normal_p, lmark, LANDMARK_R, ROBOT_R)):
-                        collision = True
-            if not collision:
+            if not check_collisions_in_steps(normal_p, p, landmarks):
                 closest_valid_point = p
                 break
 
-        print("sorted points: " + str(sortedPoints))
         #points.append([[sortedPoints[0][0][0] + rand_point[0]/10, sortedPoints[0][0][1] + rand_point[1]/10], sortedPoints[0][0]]) # add the random point to the list of points with the closest point linked
-        points.append([normalize_point(closest_valid_point[0], rand_point, MAX_DIST), closest_valid_point[0]])
-        print("points: " + str(points))
-        print("points[0]: " + str(points[0]))
+        # Add point with closest point: [[new point], [closest previous point]]
+        if not closest_valid_point == []:
+            points.append([normalize_point(closest_valid_point[0], rand_point, MAX_DIST), closest_valid_point[0]])
 
         # If the random point generated is close enough to the goal, 
         # then we will start finding the shortest path going from the goal back to the origin
-        if(hf.calculate_distance(points[-1][0], goal) < 10):
-            final_path = [[goal, points[-1][0]]]
-            final_path.append(points[-1])
-            # The while loop runs while the next point to add is not the origin
-            while final_path[-1][1] != origin:
-                print(final_path)
-                # We then run through all points in the list
-                for i in range(len(points)):
-                    print("points: " + str(points[i][0]))
-                    print("finalpath[-1]: " + str(final_path[-1]))
-                    # Then we find the point in the list, that is equal to the point linked to the with the previous point found, and add it to the final path
-                    if points[i][0] == final_path[-1][1]:
-                        final_path.append(points[i])
-                    
-            # We then return the final path
-            return points, final_path
-
-        # Check for collisions (in steps)
-        # Add point with closest point: [[new point], [closest previous point]]
         # Go from  goal to origin through closest previous point
+        if(hf.calculate_distance(points[-1][0], goal) < 10):
+            final_path = find_final_path(points, origin, goal)
+            final_path_smooth = smooth_path(final_path, landmarks, origin, goal)
+            return points, final_path, final_path_smooth
 
+def draw_graph(path, lmarks, ylim_neg, ylim_pos, xlim_neg, xlim_pos):
+    plt.figure()
+    # Loop through the data and plot each connection
+    for line in path:
+        x_values = [line[0][0], line[1][0]]
+        y_values = [line[0][1], line[1][1]]
+        plt.plot(x_values, y_values, marker='o', linestyle='-', markersize=8)
+    plt.scatter([x for (x, y) in lmarks], [y for (x, y) in lmarks], s=LANDMARK_R**2, c='red')
+    # Set axis labels (you can customize these as needed)
+    plt.xlabel('X-axis')
+    plt.ylabel('Y-axis')
+    plt.xlim(xlim_neg, xlim_pos)
+    plt.ylim(ylim_neg, ylim_pos)
 
-lmarks = [[0, 30], [50, 50], [-50, 50]]
-goal = [0, 50]
+    # Show the plot
+    plt.grid(True)
+    plt.show()
 
-path, final = find_path(ORIGIN, lmarks, goal, 100, 100)
-print(path)
+def generate_random_landmark(origin, goal):
+    point = [np.random.randint(X_LIM_NEG, X_LIM_POS), np.random.randint(Y_LIM_NEG, Y_LIM_POS)]
+    if (hf.check_collision(point, goal, LANDMARK_R, LANDMARK_R) or hf.check_collision(point, origin, LANDMARK_R, ROBOT_R)):
+        return generate_random_landmark(origin, goal)
+    else:
+        return point
 
-plt.figure()
+def main():
+    lmarks = []
+    goal = [0, 50]
+    for i in range(30):
+        lmarks.append(generate_random_landmark(ORIGIN, goal))
 
-# Loop through the data and plot each connection
-for line in path:
-    x_values = [line[0][0], line[1][0]]
-    y_values = [line[0][1], line[1][1]]
-    plt.plot(x_values, y_values, marker='o', linestyle='-', markersize=8)
-plt.scatter([x for (x, y) in lmarks], [y for (x, y) in lmarks], s=LANDMARK_R**2, c='red')
-# Set axis labels (you can customize these as needed)
-plt.xlabel('X-axis')
-plt.ylabel('Y-axis')
-plt.xlim(-100, 100)
-plt.ylim(0, 100)
+    draw_graph([], lmarks, Y_LIM_NEG, Y_LIM_POS, X_LIM_NEG, X_LIM_POS)
 
-# Show the plot
-plt.grid(True)
-plt.show()
+    path, final, final_smooth = find_path(ORIGIN, lmarks, goal, X_LIM_NEG, X_LIM_POS, Y_LIM_NEG, Y_LIM_POS)
+    #path, final = find_path(ORIGIN, lmarks, goal, X_LIM_NEG, X_LIM_POS, Y_LIM_NEG, Y_LIM_POS)
+    print(final)
 
-plt.figure()
+    draw_graph(path, lmarks, Y_LIM_NEG, Y_LIM_POS, X_LIM_NEG, X_LIM_POS)
 
-# Loop through the data and plot each connection
-for line in final:
-    x_values = [line[0][0], line[1][0]]
-    y_values = [line[0][1], line[1][1]]
-    plt.plot(x_values, y_values, marker='o', linestyle='-', markersize=8)
-plt.scatter([x for (x, y) in lmarks], [y for (x, y) in lmarks], s=LANDMARK_R**2, c='red')
-# Set axis labels (you can customize these as needed)
-plt.xlabel('X-axis')
-plt.ylabel('Y-axis')
-plt.xlim(-100, 100)
-plt.ylim(0, 100)
+    draw_graph(final, lmarks, Y_LIM_NEG, Y_LIM_POS, X_LIM_NEG, X_LIM_POS)
 
-# Show the plot
-plt.grid(True)
-plt.show()
+    draw_graph(final_smooth, lmarks, Y_LIM_NEG, Y_LIM_POS, X_LIM_NEG, X_LIM_POS)
+
+main()
