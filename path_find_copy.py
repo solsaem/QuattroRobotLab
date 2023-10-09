@@ -109,8 +109,8 @@ def find_path(origin, landmarks, goal, grid_size_x_neg, grid_size_x_pos, grid_si
         # Go from  goal to origin through closest previous point
         if(hf.calculate_distance(points[-1][0], goal) < 10):
             final_path = find_final_path(points, origin, goal)
-            final_path_smooth = smooth_path(final_path, landmarks, origin, goal)
-            return points, final_path, final_path_smooth
+            #final_path_smooth = smooth_path(final_path, landmarks, origin, goal)
+            return points, final_path#, final_path_smooth
 
 def draw_graph(path, lmarks, ylim_neg, ylim_pos, xlim_neg, xlim_pos):
     plt.figure()
@@ -145,7 +145,7 @@ def main():
 
     draw_graph([], lmarks, Y_LIM_NEG, Y_LIM_POS, X_LIM_NEG, X_LIM_POS)
 
-    path, final, final_smooth = find_path(ORIGIN, lmarks, goal, X_LIM_NEG, X_LIM_POS, Y_LIM_NEG, Y_LIM_POS)
+    path, final = find_path(ORIGIN, lmarks, goal, X_LIM_NEG, X_LIM_POS, Y_LIM_NEG, Y_LIM_POS)
     #path, final = find_path(ORIGIN, lmarks, goal, X_LIM_NEG, X_LIM_POS, Y_LIM_NEG, Y_LIM_POS)
     print(final)
 
@@ -153,6 +153,6 @@ def main():
 
     draw_graph(final, lmarks, Y_LIM_NEG, Y_LIM_POS, X_LIM_NEG, X_LIM_POS)
 
-    draw_graph(final_smooth, lmarks, Y_LIM_NEG, Y_LIM_POS, X_LIM_NEG, X_LIM_POS)
+    # draw_graph(final_smooth, lmarks, Y_LIM_NEG, Y_LIM_POS, X_LIM_NEG, X_LIM_POS)
 
 main()
