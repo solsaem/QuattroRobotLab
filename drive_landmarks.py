@@ -1,10 +1,6 @@
-<<<<<<< Updated upstream
 
 
-import Help_functions as hf
-=======
 import Help_Functions as hf
->>>>>>> Stashed changes
 import robot
 from picamera2 import Picamera2, Preview
 import cv2
@@ -39,41 +35,39 @@ for list in tvecs:
 	for vector in list:
 		landmarks.append ([vector[0]/100, (np.sqrt(vector[2] ** 2 - vector[0] ** 2)/100 + 3)])
 
-goal = [0,50]
+goal = [0,40]
 
-path = pf.find_path(landmarks, goal, 100)
+_, path = pf.find_path([0, 0], landmarks, goal, -10, 10, 0, 100)
 path.reverse()
-path.append(goal)
-print("path" + str(path))
+print("path: " + str(path))
 prev_angle = 0
-for i, _ in enumerate(path, start=1):
-	if  len(path) == i:
+for point in path:
+	if point[1] == goal:
 		print("GOAL")
 		break
-	print("path[i]" + str(path[i]))
-	print("path[i-1]" + str(path[i-1]))
-	angle = 90 - (np.arccos((np.array(path[i])-np.array(path[i-1]))/np.linalg.norm((np.array(path[i])-np.array(path[i-1]))))/np.pi*180)[0]
+	angle = hf.calculate_angle(point[0][0], point[0][1], point[1][0], point[1][1])
+	#angle = 90 - (np.arccos((np.array(path[i])-np.array(path[i-1]))/np.linalg.norm((np.array(path[i])-np.array(path[i-1]))))/np.pi*180)[0]
 	print("angle: " + str(angle))
 	print("prev angle: " + str(prev_angle))
 	print("Total angle: " + str(angle - prev_angle))
 	hf.TurnXDegRight(arlo, angle - prev_angle)
-	dist = np.linalg.norm(np.array(path[i-1]) - np.array(path[i]))
-	print("dist" + str(dist))
-	hf.GoXMeters(arlo, dist/10, 1, 1)
-	prev_angle += angle
+	dist = hf.calculate_distance(point[0], point[1])
+	print("dist: " + str(dist))
+	hf.GoXMeters(arlo, dist*10, 1, 1)
+	prev_angle = angle
 
 
 
+pf.draw_graph(path, landmarks, -100, 100, -100, 100)
 
-
-plt.plot([x for (x, y) in path], [y for (x, y) in path], '-b')
-plt.scatter([x for (x, y) in landmarks], [y for (x, y) in landmarks], s=9**2, c='red')
-plt.scatter(goal[0], goal[1], s=10**2, c='green')
-plt.scatter(0,0, s=5**2, c='black')
-plt.grid(True)
-plt.ylim(0,100)
-plt.xlim(-40,40)
-plt.pause(0.01)  # Need for Mac
-plt.savefig("path.png")
-plt.show()
+#plt.plot([x for (x, y) in path], [y for (x, y) in path], '-b')
+#plt.scatter([x for (x, y) in landmarks], [y for (x, y) in landmarks], s=9**2, c='red')
+#plt.scatter(goal[0], goal[1], s=10**2, c='green')
+#plt.scatter(0,0, s=5**2, c='black')
+#plt.grid(True)
+#plt.ylim(0,100)
+#plt.xlim(-40,40)
+#plt.pause(0.01)  # Need for Mac
+#plt.savefig("path.png")
+#plt.show()
 

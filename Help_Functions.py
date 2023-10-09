@@ -1,7 +1,7 @@
 from time import sleep
 import time
-#from picamera2 import Picamera2, Preview
-#import cv2
+from picamera2 import Picamera2, Preview
+import cv2
 import numpy as np
 import math
 #################################################################################
