@@ -3,6 +3,7 @@ import time
 #from picamera2 import Picamera2, Preview
 #import cv2
 import numpy as np
+import math
 #################################################################################
                     ### GLOBAL CONST VARIABLES ###                              #
 SPEED_LT = 61                           # LEFT MOTOR                            #
@@ -80,3 +81,13 @@ def check_collision(p1, p2, r1, r2):
 # Calculates distance between two points
 def calculate_distance(p1, p2):
     return np.linalg.norm(np.array(p1) - np.array(p2))
+
+def calculate_angle(x, y, x_prev, y_prev):
+    delta_x = x - x_prev
+    delta_y = y - y_prev
+
+    angle = math.atan2(delta_x, delta_y)
+
+    angle_degrees = math.degrees(angle)
+
+    return angle_degrees

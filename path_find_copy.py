@@ -147,7 +147,11 @@ def main():
 
     path, final = find_path(ORIGIN, lmarks, goal, X_LIM_NEG, X_LIM_POS, Y_LIM_NEG, Y_LIM_POS)
     #path, final = find_path(ORIGIN, lmarks, goal, X_LIM_NEG, X_LIM_POS, Y_LIM_NEG, Y_LIM_POS)
-    print(final)
+    angles = []
+    for point in final:
+        angles.append(hf.calculate_angle(point[0][0], point[0][1], point[1][0], point[1][1]))
+    print(angles)
+    
 
     draw_graph(path, lmarks, Y_LIM_NEG, Y_LIM_POS, X_LIM_NEG, X_LIM_POS)
 
