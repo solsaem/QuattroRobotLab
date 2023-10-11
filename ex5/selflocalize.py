@@ -5,11 +5,12 @@ import numpy as np
 import time
 from timeit import default_timer as timer
 import sys
+import math
 
 
 # Flags
 showGUI = True  # Whether or not to open GUI windows
-onRobot = True # Whether or not we are running on the Arlo robot
+onRobot = False # Whether or not we are running on the Arlo robot
 
 
 def isRunningOnArlo():
@@ -43,6 +44,9 @@ CYELLOW = (0, 255, 255)
 CMAGENTA = (255, 0, 255)
 CWHITE = (255, 255, 255)
 CBLACK = (0, 0, 0)
+
+CENTER_BOX_ID = 3
+OTHER_BOX_ID = 2
 
 # Landmarks.
 # The robot knows the position of 2 landmarks. Their coordinates are in the unit centimeters [cm].
@@ -165,25 +169,33 @@ try:
     
         if not isRunningOnArlo():
             if action == ord('w'): # Forward
-                velocity += 4.0
+                velocity += 0.5
             elif action == ord('x'): # Backwards
-                velocity -= 4.0
+                velocity -= 0.5
             elif action == ord('s'): # Stop
                 velocity = 0.0
                 angular_velocity = 0.0
             elif action == ord('a'): # Left
-                angular_velocity += 0.2
+                angular_velocity += 0.05
             elif action == ord('d'): # Right
-                angular_velocity -= 0.2
+                angular_velocity -= 0.05
 
 
+        for item in particles:
+            delta_x = (velocity * math.cos(item.theta))
+            delta_y = (velocity * math.sin(item.theta))
+            delta_theta = angular_velocity
+            particle.move_particle(item, delta_x, delta_y, delta_theta)
 
+
+        particle.add_uncertainty(particles, 2, 0.2)
         
         # Use motor controls to update particles
-        # XXX: Make the robot drive
+        # XXX: Make the robot drivew
         # XXX: You do this
 
 
+        
         # Fetch next frame
         colour = cam.get_next_frame()
         
@@ -193,22 +205,68 @@ try:
             # List detected objects
             for i in range(len(objectIDs)):
                 print("Object ID = ", objectIDs[i], ", Distance = ", dists[i], ", angle = ", angles[i])
+
+
                 # XXX: Do something for each detected object - remember, the same ID may appear several times
 
             # Compute particle weights
             # XXX: You do this
 
+            new_particles = []
+
+            SD_dist = 1
+            SD_angle = .5
+            for j in range(0,len(particles)):
+                distance_weight = 1
+                angle_weight = 1
+                for i in range(len(objectIDs)):
+                    if objectIDs[i] == CENTER_BOX_ID:
+                        measured_distance = dists[i]
+                        measured_angle = angles[i]
+                        di = np.sqrt(((0 - particles[j].x) ** 2) + ((0 - particles[j].y) ** 2))
+                        e_l = np.array([0 - particles[j].x, 0 - particles[j].y]).T / di
+                        e_theta = np.array([-np.sin(particles[j].theta), np.cos(particles[j].theta)]).T
+                        fi_i = np.sign(np.dot(e_l, e_theta) * np.arccos(np.dot(e_l, e_theta)))
+                        distance_weight *= (1/np.sqrt(2*np.pi* (SD_dist ** 2)))* np.exp(-((measured_distance - di) ** 2) / 2 * (SD_dist ** 2))
+                        angle_weight *= (1/np.sqrt(2*np.pi* (SD_angle ** 2)))* np.exp(-((measured_angle - fi_i) ** 2) / 2 * (SD_angle ** 2))
+                    if objectIDs[i] == OTHER_BOX_ID:
+                        measured_distance = dists[i]
+                        measured_angle = angles[i]
+                        di = np.sqrt(((300 - particles[j].x) ** 2) + ((0 - particles[j].y) ** 2))
+                        e_l = np.array([300 - particles[j].x, 0 - particles[j].y]).T / di
+                        e_theta = np.array([-np.sin(particles[j].theta), np.cos(particles[j].theta)]).T
+                        fi_i = np.sign(np.dot(e_l, e_theta) * np.arccos(np.dot(e_l, e_theta)))
+                        distance_weight *= (1/np.sqrt(2*np.pi* (SD_dist ** 2)))* np.exp(-((measured_distance - di) ** 2) / 2 * (SD_dist ** 2))
+                        angle_weight *= (1/np.sqrt(2*np.pi* (SD_angle ** 2)))* np.exp(-((measured_angle - fi_i) ** 2) / 2 * (SD_angle ** 2))
+                new_particles.append(particle.Particle(particles[j].x, particles[j].y, particles[j].getTheta(), round(distance_weight * angle_weight, 4)))
+            particles = new_particles
+
             # Resampling
-            # XXX: You do this
+                # XXX: You do this
+            # Normalize the weights
+            total_weight = sum([item.weight for item in particles])
+            new_particles = []
+            if total_weight == 0:
+                for i in range(0,len(particles)):
+                    new_particles.append(particle.Particle(particles[i].x, particles[i].y, particles[i].getTheta(), 1 / num_particles))
+            else:
+                for i in range(0,len(particles)):
+                    new_particles.append(particle.Particle(particles[i].x, particles[i].y, particles[i].getTheta(), particles[i].weight / total_weight))
+            particles = new_particles
+
+            # Resample particles based on weights
+            indices = np.random.choice(range(num_particles), num_particles, p=[item.getWeight() for item in particles])
+            
+            particles = [particles[i] for i in indices]
 
             # Draw detected objects
             cam.draw_aruco_objects(colour)
         else:
-            # No observation - reset weights to uniform distribution
+            # No observation - reset weights to uniform dist"ribution
             for p in particles:
                 p.setWeight(1.0/num_particles)
 
-    
+        
         est_pose = particle.estimate_pose(particles) # The estimate of the robots current pose
 
         if showGUI:

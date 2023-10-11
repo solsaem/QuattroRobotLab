@@ -34,6 +34,9 @@ def SIR_Algorithm(k, loops):
     # SIR Algorithm
     weights = p(q_x) / q(q_x)
     weights /= np.sum(weights)                          # Normalize the weights
+
+
+    # Resampling based on weight
     indices = np.random.choice(range(k), k, p=weights)
     q_x = q_x[indices]
     weights = np.ones(k) / k
