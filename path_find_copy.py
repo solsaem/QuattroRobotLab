@@ -18,7 +18,7 @@ Y_LIM_NEG = -30
 Y_LIM_POS = 100
 X_LIM_NEG = -100
 X_LIM_POS = 100
-
+GOAL = [0, 50]
 
 # Function to normalize a point based on a maximum distance
 def normalize_point(previous_point, current_point, max_distance):
@@ -71,13 +71,69 @@ def check_collisions_in_steps(new_p, prev_p, lmarks):
         collision = False
     return collision
 
+# FIXME - Second point will never be removed with current implementation.
 def smooth_path(path, lmarks, origin, goal):
-    temp = path
-    for i in range(len(temp)-1):
-        for j in range(i+1, len(temp)):
-            if not check_collisions_in_steps(temp[i][0], temp[j], lmarks):
-                temp[i][1] = temp[j][0]
-    return find_final_path(temp, origin, goal)
+    # temp = path
+    # for i in range(len(temp)-1):
+    #     for j in range(i+1, len(temp)):
+    #         if not check_collisions_in_steps(temp[i][0], temp[j], lmarks):
+    #             temp[i][1] = temp[j][0]
+    # return find_final_path(temp, origin, goal)
+
+    # Sorting to increasing order  
+    temp = path[::-1]
+
+    # List of points to be removed
+    to_remove = []
+
+    for index, value in enumerate(temp):
+        # print("\nCHECKING VALUE  : " + str(value))
+        if value in to_remove:
+            # print("-- Point already removed - " + str(value))
+            continue
+        else:
+        # Checking for collisions from point i to point i+2 
+        # (we know there is no collision from point i to i+1)
+            for i, next in enumerate(temp[index + 2:]):
+                # print("\nCHECKING VALUE  : " + str(next) + "\n\n")
+                if not check_collisions_in_steps(temp[index + i + 1][1], temp[index], lmarks):            
+                    if temp[index + i + 1] in to_remove:
+                        # Point already removed, so do nothing...
+                        print()
+                    # Adding point to be removed to list           
+                    else:
+                        to_remove.append(temp[index + i + 1])
+    
+    print("\n\n# ----\t DONE \t---- #\n ")
+    for segment in to_remove:
+        print("REMOVING : " + str(segment))
+        temp.remove(segment)
+
+    # Updating "next point" in each segment 
+    print("\n-- Updating segments") 
+    t = None
+    for segment in temp:
+        temp_segment = segment    
+        if t is None:
+            # Do nothing
+            print()
+        else:
+            segment[1] = t
+        t = segment[0]
+
+    print("-- Original length (in points)\t: " + str(len(path)))
+    print("-- Optimized length (in points)\t: " + str(len(temp)))
+    print("\n")
+    print("OPTIMIZED PATH (ISH)")
+    for k, val in enumerate(temp):
+        print("\tPOINT: " + str(temp[k]))
+        
+    temp = temp[::-1]
+    return temp
+
+
+
+
 
 ### Function for finding shortest path from origin to goal
 def find_path(origin, landmarks, goal, grid_size_x_neg, grid_size_x_pos, grid_size_y_neg, grid_size_y_pos):
@@ -139,10 +195,13 @@ def generate_random_landmark(origin, goal):
 
 def main():
     lmarks = []
-    goal = [0, 50]
-    for i in range(30):
+    # goal = [0, 50]
+    goal = GOAL
+    for i in range(OBSTACLES):
         lmarks.append(generate_random_landmark(ORIGIN, goal))
 
+    
+    print("LANDMARKS: " + str(lmarks))
     draw_graph([], lmarks, Y_LIM_NEG, Y_LIM_POS, X_LIM_NEG, X_LIM_POS)
 
     path, final = find_path(ORIGIN, lmarks, goal, X_LIM_NEG, X_LIM_POS, Y_LIM_NEG, Y_LIM_POS)
@@ -156,7 +215,8 @@ def main():
     draw_graph(path, lmarks, Y_LIM_NEG, Y_LIM_POS, X_LIM_NEG, X_LIM_POS)
 
     draw_graph(final, lmarks, Y_LIM_NEG, Y_LIM_POS, X_LIM_NEG, X_LIM_POS)
-
-    # draw_graph(final_smooth, lmarks, Y_LIM_NEG, Y_LIM_POS, X_LIM_NEG, X_LIM_POS)
+    
+    final_smooth = smooth_path(final, lmarks, ORIGIN, GOAL)
+    draw_graph(final_smooth, lmarks, Y_LIM_NEG, Y_LIM_POS, X_LIM_NEG, X_LIM_POS)
 
 main()
