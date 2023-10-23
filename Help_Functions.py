@@ -33,14 +33,14 @@ def TurnXDegRight(rob, deg):
     Stop(rob)
 
 ### Takes the robot object, the distance, and direction (negative for backwards) ###
-def GoXMeters(rob, dist, dir, speed):
+def GoXCM(rob, dist, dir, speed):
     ret = 1
     start = time.perf_counter()
     while time.perf_counter() - start < dist*0.0264 - 0.0608:
         left = rob.read_left_ping_sensor()
         right = rob.read_right_ping_sensor()
         front = rob.read_front_ping_sensor()
-        if right < 50 or left < 50 or front < 50:
+        if right < 250 or left < 250 or front < 250:
             print("Arlo too close")
             print(left)
             print(right)
