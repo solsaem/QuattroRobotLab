@@ -4,6 +4,7 @@ import cv2
 import time
 import numpy as np
 import path_find as pf
+import drive_landmarks as dl
 
 # L1 = 1      # (0,0)
 # L2 = 2      # (0,300)
@@ -28,7 +29,6 @@ dictionary = cv2.aruco.Dictionary_get(dictionary_type)
 
 camera_matrix = hf.CAMERA_MATRIX
 
-
 for landmark in LANDMARKS:
     reached_landmark = False
     found_landmark = False
@@ -38,6 +38,7 @@ for landmark in LANDMARKS:
         img = cv2.imread("img.jpg")
         aruco_corners, ids, rejectedImgPoints = cv2.aruco.detectMarkers(img, dictionary)
         ids = np.unique(ids)
+        OBSTACLES = dl.Add_Landmarks_From_Image(aruco_corners, camera_matrix)
         # Check if there are no ids
         if not ids is None:
             # Check all ids in the picture
