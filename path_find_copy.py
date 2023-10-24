@@ -7,21 +7,39 @@ from matplotlib.animation import FFMpegWriter
 import sys
 # import robot
 import Help_Functions as hf
+import math
 
-LANDMARK_R = 5
-OBSTACLES = 15
-ROBOT_R =  5
-STEPS = 100
+##### GLOBAL VARIABLES FOR EASE OF TESTING (AND EASY TWEAKS) #####
+# ORIGIN AND GOAL
 ORIGIN = [0,0]
-MAX_DIST = 10
+GOAL = [0, 50]
+
+# RADII
+LANDMARK_R = 5
+ROBOT_R =  5
+
+# GRID LIMITS
 Y_LIM_NEG = -30
 Y_LIM_POS = 100
 X_LIM_NEG = -100
 X_LIM_POS = 100
-GOAL = [0, 50]
 
-# Function to normalize a point based on a maximum distance
+# OTHER
+STEPS = 100
+MAX_DIST = 10
+HARD_CODED_LANDMARKS = []
+OBSTACLES = 15
+
 def normalize_point(previous_point, current_point, max_distance):
+    '''
+    Normalizes the distance to the new point, so all points are a set distance away from a previous point
+
+    previous_point: The point closest to current_point
+    current_point: The randomly generated point to be added a set distance from previous_point
+    max_distance: The distance that the point should be from previous_point
+
+    return: The point between previous_point to current_point where the distance from previous_point is max_distance
+    '''
     # Normalize the distance to the maximum distance
     normalized_distance = max_distance / (hf.calculate_distance(previous_point, current_point))
 
@@ -33,8 +51,15 @@ def normalize_point(previous_point, current_point, max_distance):
 
     return normalized_point
 
-
 def sort_points(points, target):
+    '''
+    Help function to sort current points based on distance from the new point
+
+    points: The list of points to be sorted
+    target: The point to be sorted after
+
+    return: The sorted list of points
+    '''
     dists = []
     # go through all points and calculate each distance
     for point in points:
@@ -47,11 +72,19 @@ def sort_points(points, target):
     return sortedPoints
 
 def find_final_path(points, origin, goal):
+    '''
+    Runs through all the branches in the tree, to find the shortest path to the goal
+
+    points: All points in the tree
+    origin: The point of origin (The start)
+    goal: The destination (Finish line)
+
+    return: The shortest path through the given points
+    '''
     final_path = [[goal, points[-1][0]]]
     final_path.append(points[-1])
     # The while loop runs while the next point to add is not the origin
     while final_path[-1][1] != origin:
-        print(final_path)
         # We then run through all points in the list
         for i in range(len(points)):
             # Then we find the point in the list, that is equal to the point linked to the with the previous point found, and add it to the final path
@@ -59,84 +92,76 @@ def find_final_path(points, origin, goal):
                 final_path.append(points[i])
     return final_path
 
-def check_collisions_in_steps(new_p, prev_p, lmarks):
-    closest_valid_point = []
-    collision = False
-    for i in range(1,STEPS):
-        p = [(prev_p[0][0]+((new_p[0]-prev_p[0][0])*(i/STEPS))), (prev_p[0][1]+((new_p[1]-prev_p[0][1])*(i/STEPS)))]
-        for lmark in lmarks:
-            if(hf.check_collision(p, lmark, LANDMARK_R, ROBOT_R)):
-                collision = True
-    if not collision:
-        collision = False
-    return collision
+def is_collision_between_points(point1, point2, obstacles):
+    '''
+    Checks collision between two points with a given radius
 
-# FIXME - Second point will never be removed with current implementation.
-def smooth_path(path, lmarks, origin, goal):
-    # temp = path
-    # for i in range(len(temp)-1):
-    #     for j in range(i+1, len(temp)):
-    #         if not check_collisions_in_steps(temp[i][0], temp[j], lmarks):
-    #             temp[i][1] = temp[j][0]
-    # return find_final_path(temp, origin, goal)
+    point1: The first point in the line to check for collisions
+    point2: The second point in the line to check for collisions
+    obstacles: The list of obstacles to check for collisions with on the given line
 
-    # Sorting to increasing order  
-    temp = path[::-1]
+    return: True on collision, False on no collision
+    '''
+    x1, y1 = point1
+    x2, y2 = point2
 
-    # List of points to be removed
-    to_remove = []
+    for obstacle in obstacles:
+        obstacle_x, obstacle_y, = obstacle
 
-    for index, value in enumerate(temp):
-        # print("\nCHECKING VALUE  : " + str(value))
-        if value in to_remove:
-            # print("-- Point already removed - " + str(value))
+        # Calculate the distance between the line segment (point1 to point2) and the obstacle center
+        dist = abs(
+            (x2 - x1) * (obstacle_y - y1) - (y2 - y1) * (obstacle_x - x1)
+        ) / math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+
+        # Check if the distance is less than the sum of radii (collision condition)
+        if dist <= LANDMARK_R+ROBOT_R:
+            return True
+
+    return False
+
+def optimize_path_rrt(path, lmarks):
+    '''
+    Optimizes the given path
+
+    path: The given path to optimize
+    lmarks: All landmarks to avoid
+
+    return: Most optimized path through the points given
+    '''
+    optimized_path = []
+    if not is_collision_between_points(path[0][0], path[-1][1], lmarks):
+        return [[path[0][0], path[-1][1]]]
+    optimized_path = [path[0]]  # Initialize the optimized path with the first point
+
+    for i in range(1, len(path)):
+        current_point = path[i][0]
+        previous_point = optimized_path[-1][0]
+
+        if not is_collision_between_points(previous_point, current_point, lmarks):
+            # No collision, skip the current point
             continue
-        else:
-        # Checking for collisions from point i to point i+2 
-        # (we know there is no collision from point i to i+1)
-            for i, next in enumerate(temp[index + 2:]):
-                # print("\nCHECKING VALUE  : " + str(next) + "\n\n")
-                if not check_collisions_in_steps(temp[index + i + 1][1], temp[index], lmarks):            
-                    if temp[index + i + 1] in to_remove:
-                        # Point already removed, so do nothing...
-                        print()
-                    # Adding point to be removed to list           
-                    else:
-                        to_remove.append(temp[index + i + 1])
+
+        optimized_path.append(path[i])
     
-    print("\n\n# ----\t DONE \t---- #\n ")
-    for segment in to_remove:
-        print("REMOVING : " + str(segment))
-        temp.remove(segment)
+    for i in range(len(optimized_path)-1):
+        optimized_path[i][1] = optimized_path[i+1][0]
+    optimized_path[-1][1] = path[-1][1]
+    return optimized_path
 
-    # Updating "next point" in each segment 
-    print("\n-- Updating segments") 
-    t = None
-    for segment in temp:
-        temp_segment = segment    
-        if t is None:
-            # Do nothing
-            print()
-        else:
-            segment[1] = t
-        t = segment[0]
-
-    print("-- Original length (in points)\t: " + str(len(path)))
-    print("-- Optimized length (in points)\t: " + str(len(temp)))
-    print("\n")
-    print("OPTIMIZED PATH (ISH)")
-    for k, val in enumerate(temp):
-        print("\tPOINT: " + str(temp[k]))
-        
-    temp = temp[::-1]
-    return temp
-
-
-
-
-
-### Function for finding shortest path from origin to goal
 def find_path(origin, landmarks, goal, grid_size_x_neg, grid_size_x_pos, grid_size_y_neg, grid_size_y_pos):
+    '''
+    RRT Path Finding function
+
+    origin: The start of the path
+    landmarks: All landmarks to avoid in the grid
+    goal: The finish of the path
+    grid_size_x_neg: The negative limit of the x-axis
+    grid_size_x_pos: The positive limit of the x-axis
+    grid_size_y_neg: The negative limit of the y-axis
+    grid_size_y_pos: The positive limit of the y-axis
+
+    return: All points in the RRT tree, The shortest path through those points
+    '''
     # Initiate points with one point (origin)
     points = [[origin, origin]]
     sortedPoints = [[origin, origin]]
@@ -151,7 +176,7 @@ def find_path(origin, landmarks, goal, grid_size_x_neg, grid_size_x_pos, grid_si
         closest_valid_point = []
         for p in sortedPoints:
             normal_p = normalize_point(p[0], rand_point, MAX_DIST)
-            if not check_collisions_in_steps(normal_p, p, landmarks):
+            if not is_collision_between_points(normal_p, p[0], landmarks):
                 closest_valid_point = p
                 break
 
@@ -159,16 +184,34 @@ def find_path(origin, landmarks, goal, grid_size_x_neg, grid_size_x_pos, grid_si
         # Add point with closest point: [[new point], [closest previous point]]
         if not closest_valid_point == []:
             points.append([normalize_point(closest_valid_point[0], rand_point, MAX_DIST), closest_valid_point[0]])
+        else:
+            continue
 
         # If the random point generated is close enough to the goal, 
         # then we will start finding the shortest path going from the goal back to the origin
         # Go from  goal to origin through closest previous point
         if(hf.calculate_distance(points[-1][0], goal) < 10):
             final_path = find_final_path(points, origin, goal)
-            #final_path_smooth = smooth_path(final_path, landmarks, origin, goal)
-            return points, final_path#, final_path_smooth
+            fully_optimzed = False
+            while not fully_optimzed:
+                original_path = final_path[:]
+
+                fully_optimzed = final_path == original_path
+            return points, final_path
 
 def draw_graph(path, lmarks, ylim_neg, ylim_pos, xlim_neg, xlim_pos):
+    '''
+    Help function for drawing the map
+
+    path: The path to draw on the graph
+    lmarks: All landmarks to avoid in the grid
+    xlim_neg: The negative limit of the x-axis
+    xlim_pos: The positive limit of the x-axis
+    ylim_neg: The negative limit of the y-axis
+    ylim_pos: The positive limit of the y-axis
+
+    return: Nothing
+    '''
     plt.figure()
     # Loop through the data and plot each connection
     for line in path:
@@ -187,6 +230,14 @@ def draw_graph(path, lmarks, ylim_neg, ylim_pos, xlim_neg, xlim_pos):
     plt.show()
 
 def generate_random_landmark(origin, goal):
+    '''
+    Function for generating random landmarks (for testing)
+
+    origin: The start of the path
+    goal: The finish line
+
+    return: A single randomly generated landmark
+    '''
     point = [np.random.randint(X_LIM_NEG, X_LIM_POS), np.random.randint(Y_LIM_NEG, Y_LIM_POS)]
     if (hf.check_collision(point, goal, LANDMARK_R, LANDMARK_R) or hf.check_collision(point, origin, LANDMARK_R, ROBOT_R)):
         return generate_random_landmark(origin, goal)
@@ -194,29 +245,37 @@ def generate_random_landmark(origin, goal):
         return point
 
 def main():
+    # Initialize landmarks and goal
     lmarks = []
-    # goal = [0, 50]
     goal = GOAL
+
+    # Add random landmarks (for testing)
     for i in range(OBSTACLES):
         lmarks.append(generate_random_landmark(ORIGIN, goal))
 
-    
-    print("LANDMARKS: " + str(lmarks))
+    # Draw the initial graph (only landmarks)
     draw_graph([], lmarks, Y_LIM_NEG, Y_LIM_POS, X_LIM_NEG, X_LIM_POS)
 
-    path, final = find_path(ORIGIN, lmarks, goal, X_LIM_NEG, X_LIM_POS, Y_LIM_NEG, Y_LIM_POS)
-    #path, final = find_path(ORIGIN, lmarks, goal, X_LIM_NEG, X_LIM_POS, Y_LIM_NEG, Y_LIM_POS)
+    # Run path finding function
+    path, final  = find_path(ORIGIN, lmarks, goal, X_LIM_NEG, X_LIM_POS, Y_LIM_NEG, Y_LIM_POS)
+
+    # Calculate angles that the robot should turn for each point in the path
     angles = []
     for point in final:
         angles.append(hf.calculate_angle(point[0][0], point[0][1], point[1][0], point[1][1]))
     print(angles)
     
-
+    # Draw the whole tree
     draw_graph(path, lmarks, Y_LIM_NEG, Y_LIM_POS, X_LIM_NEG, X_LIM_POS)
 
+    # Draw the path found
     draw_graph(final, lmarks, Y_LIM_NEG, Y_LIM_POS, X_LIM_NEG, X_LIM_POS)
     
-    final_smooth = smooth_path(final, lmarks, ORIGIN, GOAL)
+    # Optimize the path found
+    final_smooth = optimize_path_rrt(final, lmarks)
+
+    # Draw the optimized path found
     draw_graph(final_smooth, lmarks, Y_LIM_NEG, Y_LIM_POS, X_LIM_NEG, X_LIM_POS)
 
+# Run code
 main()
