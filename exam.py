@@ -21,7 +21,6 @@ NEXT_LM = L1
 
 
 arlo = robot.Robot()
-
 picam2 = hf.Camera_Init()
 
 dictionary_type = cv2.aruco.DICT_6X6_250

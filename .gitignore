@@ -3,3 +3,5 @@
 *.png
 *.save
 *.swp
+*.pyc
+__pycache__/
