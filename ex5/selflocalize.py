@@ -204,8 +204,8 @@ try:
         objectIDs, dists, angles = cam.detect_aruco_objects(colour)
         if not isinstance(objectIDs, type(None)):
             # List detected objects
-            #for i in range(len(objectIDs)):
-                #print("Object ID = ", objectIDs[i], ", Distance = ", dists[i], ", angle = ", angles[i])
+            for i in range(len(objectIDs)):
+                print("Object ID = ", objectIDs[i], ", Distance = ", dists[i], ", angle = ", angles[i])
                 
                 
                 # XXX: Do something for each detected object - remember, the same ID may appear several times
@@ -217,9 +217,10 @@ try:
 
             SD_dist = 10 
             SD_angle = 0.25 
+            
             for j in range(0,len(particles)):
-                distance_weight = 0
-                angle_weight = 0
+                distance_weight = 1
+                angle_weight = 1
                 for i in range(len(objectIDs)):
                     if objectIDs[i] == CENTER_BOX_ID:
                         measured_distance = dists[i]
@@ -228,17 +229,17 @@ try:
                         e_l = np.array([0 - particles[j].x, 0 - particles[j].y]).T / di
                         e_theta = np.array([-np.sin(particles[j].theta), np.cos(particles[j].theta)]).T
                         fi_i = np.sign(np.dot(e_l, e_theta) * np.arccos(np.dot(e_l, e_theta)))
-                        distance_weight += (1/np.sqrt(2*np.pi* (SD_dist ** 2)))* np.exp(-((measured_distance - di) ** 2) / 2 * (SD_dist ** 2))
-                        angle_weight += (1/np.sqrt(2*np.pi* (SD_angle ** 2)))* np.exp(-((measured_angle - fi_i) ** 2) / 2 * (SD_angle ** 2))
+                        distance_weight *= (1/np.sqrt(2*np.pi* (SD_dist ** 2)))* np.exp(-((measured_distance - di) ** 2) / 2 * (SD_dist ** 2))
+                        angle_weight *= (1/np.sqrt(2*np.pi* (SD_angle ** 2)))* np.exp(-((measured_angle - fi_i) ** 2) / 2 * (SD_angle ** 2))
                     if objectIDs[i] == OTHER_BOX_ID:
                         measured_distance = dists[i]
                         measured_angle = angles[i]
-                        di = np.sqrt(((300 - particles[j].x) ** 2) + ((0 - particles[j].y) ** 2))
-                        e_l = np.array([300 - particles[j].x, 0 - particles[j].y]).T / di
+                        di = np.sqrt(((20 - particles[j].x) ** 2) + ((0 - particles[j].y) ** 2))
+                        e_l = np.array([20 - particles[j].x, 0 - particles[j].y]).T / di
                         e_theta = np.array([-np.sin(particles[j].theta), np.cos(particles[j].theta)]).T
                         fi_i = np.sign(np.dot(e_l, e_theta) * np.arccos(np.dot(e_l, e_theta)))
-                        distance_weight += (1/np.sqrt(2*np.pi* (SD_dist ** 2)))* np.exp(-((measured_distance - di) ** 2) / 2 * (SD_dist ** 2))
-                        angle_weight += (1/np.sqrt(2*np.pi* (SD_angle ** 2)))* np.exp(-((measured_angle - fi_i) ** 2) / 2 * (SD_angle ** 2))
+                        distance_weight *= (1/np.sqrt(2*np.pi* (SD_dist ** 2)))* np.exp(-((measured_distance - di) ** 2) / 2 * (SD_dist ** 2))
+                        angle_weight *= (1/np.sqrt(2*np.pi* (SD_angle ** 2)))* np.exp(-((measured_angle - fi_i) ** 2) / 2 * (SD_angle ** 2))
                 new_particles.append(particle.Particle(particles[j].x, particles[j].y, particles[j].getTheta(), round(distance_weight * angle_weight, 4)))
             particles = new_particles
 
@@ -272,7 +273,7 @@ try:
 
         
         est_pose = particle.estimate_pose(particles) # The estimate of the robots current pose
-        #print("\n --- Estimated pose ----\n\t X: " + str(est_pose.getX()) + "\tY: " + str(est_pose.getY()))
+        print("\n --- Estimated pose ----\n\t X:\t" + str(est_pose.getX()) + "\n\tY:\t" + str(est_pose.getY()) + "\n\tA:\t" + str(est_pose.getTheta()))
 
         if showGUI:
             # Draw map
