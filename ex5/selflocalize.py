@@ -45,7 +45,7 @@ CMAGENTA = (255, 0, 255)
 CWHITE = (255, 255, 255)
 CBLACK = (0, 0, 0)
 
-CENTER_BOX_ID = 4
+CENTER_BOX_ID = 10
 OTHER_BOX_ID = 6
 
 # Landmarks.
@@ -188,7 +188,7 @@ try:
             particle.move_particle(item, delta_x, delta_y, delta_theta)
 
 
-        particle.add_uncertainty(particles, 1, 0.1)
+        particle.add_uncertainty(particles, 1, 0.05)
         
         # Use motor controls to update particles
         # XXX: Make the robot drivew
@@ -205,9 +205,8 @@ try:
         if not isinstance(objectIDs, type(None)):
             # List detected objects
             for i in range(len(objectIDs)):
-                print("Object ID = ", objectIDs[i], ", Distance = ", dists[i], ", angle = ", angles[i])
-                
-                
+                print("Object ID = ", objectIDs[i], ", Distance = ", dists[i], ", angle = ", math.degrees(angles[i]))
+
                 # XXX: Do something for each detected object - remember, the same ID may appear several times
 
             # Compute particle weights
@@ -215,8 +214,8 @@ try:
 
             new_particles = []
 
-            SD_dist = 10 
-            SD_angle = 0.25 
+            SD_dist = 10
+            SD_angle = 0.05 
             
             for j in range(0,len(particles)):
                 distance_weight = 1
@@ -229,18 +228,18 @@ try:
                         e_l = np.array([0 - particles[j].x, 0 - particles[j].y]).T / di
                         e_theta = np.array([-np.sin(particles[j].theta), np.cos(particles[j].theta)]).T
                         fi_i = np.sign(np.dot(e_l, e_theta) * np.arccos(np.dot(e_l, e_theta)))
-                        distance_weight *= (1/np.sqrt(2*np.pi* (SD_dist ** 2)))* np.exp(-((measured_distance - di) ** 2) / 2 * (SD_dist ** 2))
-                        angle_weight *= (1/np.sqrt(2*np.pi* (SD_angle ** 2)))* np.exp(-((measured_angle - fi_i) ** 2) / 2 * (SD_angle ** 2))
+                        distance_weight *= (1/np.sqrt(2*np.pi* (SD_dist ** 2)))* np.exp(-((measured_distance - di) ** 2) / (2 * SD_dist ** 2))
+                        angle_weight *= (1/np.sqrt(2*np.pi* (SD_angle ** 2)))* np.exp(-((measured_angle - fi_i) ** 2) / (2 * SD_angle ** 2))
                     if objectIDs[i] == OTHER_BOX_ID:
                         measured_distance = dists[i]
                         measured_angle = angles[i]
-                        di = np.sqrt(((20 - particles[j].x) ** 2) + ((0 - particles[j].y) ** 2))
-                        e_l = np.array([20 - particles[j].x, 0 - particles[j].y]).T / di
+                        di = np.sqrt(((100 - particles[j].x) ** 2) + ((0 - particles[j].y) ** 2))
+                        e_l = np.array([100 - particles[j].x, 0 - particles[j].y]).T / di
                         e_theta = np.array([-np.sin(particles[j].theta), np.cos(particles[j].theta)]).T
                         fi_i = np.sign(np.dot(e_l, e_theta) * np.arccos(np.dot(e_l, e_theta)))
-                        distance_weight *= (1/np.sqrt(2*np.pi* (SD_dist ** 2)))* np.exp(-((measured_distance - di) ** 2) / 2 * (SD_dist ** 2))
-                        angle_weight *= (1/np.sqrt(2*np.pi* (SD_angle ** 2)))* np.exp(-((measured_angle - fi_i) ** 2) / 2 * (SD_angle ** 2))
-                new_particles.append(particle.Particle(particles[j].x, particles[j].y, particles[j].getTheta(), round(distance_weight * angle_weight, 4)))
+                        distance_weight *= (1/np.sqrt(2*np.pi* (SD_dist ** 2)))* np.exp(-((measured_distance - di) ** 2) / (2 * SD_dist ** 2))
+                        angle_weight *= (1/np.sqrt(2*np.pi* (SD_angle ** 2)))* np.exp(-((measured_angle - fi_i) ** 2) / (2 * SD_angle ** 2))
+                new_particles.append(particle.Particle(particles[j].x, particles[j].y, particles[j].getTheta(), distance_weight * angle_weight))
             particles = new_particles
 
             # Resampling
@@ -249,7 +248,7 @@ try:
             total_weight = sum([item.weight for item in particles])
             new_particles = []
             if total_weight == 0:
-                #print("\nTotal weight = 0")
+                print("\nTotal weight = 0")
                 for i in range(0,len(particles)):
                     new_particles.append(particle.Particle(particles[i].x, particles[i].y, particles[i].getTheta(), 1 / num_particles))
                 #new_particles = initialize_particles(num_particles)
@@ -267,7 +266,7 @@ try:
             # Draw detected objects
             cam.draw_aruco_objects(colour)
         else:
-            # No observation - reset weights to uniform dist"ribution
+            # No observation - reset weights to uniform distribution
             for p in particles:
                 p.setWeight(1.0/num_particles)
 
