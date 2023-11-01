@@ -1,17 +1,26 @@
 import cv2
+import sys
 import particle
 import camera
 import numpy as np
 import time
 from timeit import default_timer as timer
-import sys
 from particle import Particle, estimate_pose, add_uncertainty, move_particle, fi_i, e_l, e_theta, distance_weight, angle_weight, d_i
 import math
 
+sys.path.append('..')
+import Help_Functions as hf
+
+
+objectIDs = [] 
+dists = [] 
+angles = []
+pose = None
+est_pose = None
 
 # Flags
 showGUI = True  # Whether or not to open GUI windows
-onRobot = True  # Whether or not we are running on the Arlo robot
+onRobot = False  # Whether or not we are running on the Arlo robot
 
 
 def isRunningOnArlo():
@@ -23,7 +32,8 @@ def isRunningOnArlo():
 
 if isRunningOnArlo():
     # XXX: You need to change this path to point to where your robot.py file is located
-    sys.path.append("../../../../Arlo/python")
+    sys.path.append("../../../Arlo/python")
+
 
 
 try:
@@ -48,12 +58,13 @@ CBLACK = (0, 0, 0)
 
 # Landmarks.
 # The robot knows the position of 2 landmarks. Their coordinates are in the unit centimeters [cm].
-landmarkIDs = [1, 2, 3, 4]
+landmarkIDs = [11, 1, 2, 3]
 landmarks = {
+    11: (0.0, 300.0),
     1: (0.0, 0.0),  # Coordinates for landmark 1
     2: (0.0, 300.0),  # Coordinates for landmark 2
     3: (400.0, 0.0), # Coordinates for landmark 3
-    4: (400.0, 300.0) # Coordinates for landmark 4
+#    4: (400.0, 300.0) # Coordinates for landmark 4
 }
 landmark_colors = [CRED, CGREEN, CBLUE, CBLACK] # Colors used when drawing the landmarks
 
@@ -121,158 +132,176 @@ def initialize_particles(num_particles):
 
     return particles
 
-
-# Main program #
-try:
-    if showGUI:
-        # Open windows
-        WIN_RF1 = "Robot view"
-        cv2.namedWindow(WIN_RF1)
-        cv2.moveWindow(WIN_RF1, 50, 50)
-
-        WIN_World = "World view"
-        cv2.namedWindow(WIN_World)
-        cv2.moveWindow(WIN_World, 500, 50)
-
-
-    # Initialize particles
-    num_particles = 1000
-    particles = initialize_particles(num_particles)
-
-    est_pose = particle.estimate_pose(particles) # The estimate of the robots current pose
-
-    # Driving parameters
-    velocity = 0.0 # cm/sec
-    angular_velocity = 0.0 # radians/sec
-
-    # Initialize the robot (XXX: You do this)
-
-    # Allocate space for world map
-    world = np.zeros((1000,1000,3), dtype=np.uint8)
-
-    # Draw map
-    draw_world(est_pose, particles, world)
-
-    print("Opening and initializing camera")
-    if isRunningOnArlo():
-        #cam = camera.Camera(0, robottype='arlo', useCaptureThread=True)
-        cam = camera.Camera(0, robottype='arlo', useCaptureThread=False)
-    else:
-        #cam = camera.Camera(0, robottype='macbookpro', useCaptureThread=True)
-        cam = camera.Camera(0, robottype='macbookpro', useCaptureThread=False)
-
-    while True:
-
-        # Move the robot according to user input (only for testing)
-        action = cv2.waitKey(10)
-        if action == ord('q'): # Quit
-            break
-    
-        if not isRunningOnArlo():
-            if action == ord('w'): # Forward
-                velocity += 4.0
-            elif action == ord('x'): # Backwards
-                velocity -= 4.0
-            elif action == ord('s'): # Stop
-                velocity = 0.0
-                angular_velocity = 0.0
-            elif action == ord('a'): # Left
-                angular_velocity += 0.2
-            elif action == ord('d'): # Right
-                angular_velocity -= 0.2
-
-        for item in particles:
-            delta_x = (velocity * math.cos(item.theta))
-            delta_y = (velocity * math.sin(item.theta))
-            delta_theta = angular_velocity
-            move_particle(item, delta_x, delta_y, delta_theta)
-
-        add_uncertainty(particles, 1, 0.05)
-        
-        # Use motor controls to update particles
-        # XXX: Make the robot drive
-        # XXX: You do this
-
-
-        # Fetch next frame
-        colour = cam.get_next_frame()
-        
-        # Detect objects
-        objectIDs, dists, angles = cam.detect_aruco_objects(colour)
-        if not isinstance(objectIDs, type(None)):
-            # List detected objects
-            for i in range(len(objectIDs)):
-                print("Object ID = ", objectIDs[i], ", Distance = ", dists[i], ", angle = ", angles[i])
-                # XXX: Do something for each detected object - remember, the same ID may appear several times
-
-            # Compute particle weights
-            for i in range(len(particles)):
-                particle = particles[i]
-                particle_weight = 1.0  # Initialize particle weight to 1.0
-
-                for j in range(len(objectIDs)):
-                    if objectIDs[j] in landmarks:
-                        obj = landmarks.get(objectIDs[j])
-                        # Calculate distance weight based on measured_distance
-                        measured_distance = dists[j]
-                        # Calculate angle weight based on measured_angle
-                        measured_angle = -angles[j]
-                        
-                        d_weight = distance_weight(measured_distance, obj[0], particle.x, obj[1], particle.y, d_i(obj[0], particle.x, obj[1], particle.y))
-
-                        a_weight = angle_weight(measured_angle, fi_i(e_l(obj[0], particle.x, obj[1], particle.y), e_theta(particle.theta)))
-
-                        # Combine distance and angle weights
-                        particle_weight *= d_weight * a_weight
-
-                    particle.setWeight(particle_weight)
-
-            # Resampling using SIR algorithm
-            new_particles = []
-            total_weight = sum(particle.weight for particle in particles)
-
-            for i in range(num_particles):
-                random_weight = np.random.uniform(0, total_weight)
-                weight_sum = 0
-
-                for particle in particles:
-                    weight_sum += particle.weight
-
-                    if weight_sum >= random_weight:
-                        new_particle = Particle(particle.x, particle.y, particle.theta, particle.weight)  # Create a new particle with the same state
-                        new_particles.append(new_particle)
-                        break
-
-            particles = new_particles  # Update the particles with the resampled set
-
-            # Draw detected objects
-            cam.draw_aruco_objects(colour)
-        else:
-            # No observation - reset weights to uniform distribution
-            for p in particles:
-                p.setWeight(1.0/num_particles)
-        
-        est_pose = estimate_pose(particles) # The estimate of the robots current pose
-        print("\n --- Estimated pose ----\n\t X:\t" + str(est_pose.getX()) + "\n\tY:\t" + str(est_pose.getY()) + "\n\tA:\t" + str(est_pose.getTheta()))
-
+def self_localize():
+    global objectIDs, dists, angles, est_pose
+    # Main program #
+    try:
         if showGUI:
-            # Draw map
-            draw_world(est_pose, particles, world)
+            # Open windows
+            WIN_RF1 = "Robot view"
+            cv2.namedWindow(WIN_RF1)
+            cv2.moveWindow(WIN_RF1, 50, 50)
+
+            WIN_World = "World view"
+            cv2.namedWindow(WIN_World)
+            cv2.moveWindow(WIN_World, 500, 50)
+
+
+        # Initialize particles
+        num_particles = 1000
+        particles = initialize_particles(num_particles)
+
+        est_pose = estimate_pose(particles) # The estimate of the robots current pose
+
+        # Driving parameters
+        velocity = 0.0 # cm/sec
+        angular_velocity = 0.0 # radians/sec
+
+        # Initialize the robot (XXX: You do this)
+
+        # Allocate space for world map
+        world = np.zeros((1000,1000,3), dtype=np.uint8)
+
+        # Draw map
+        draw_world(est_pose, particles, world)
+
+        print("Opening and initializing camera")
+        if isRunningOnArlo():
+            #cam = camera.Camera(0, robottype='arlo', useCaptureThread=True)
+            cam = camera.Camera(0, robottype='arlo', useCaptureThread=False)
+        else:
+            #cam = camera.Camera(0, robottype='macbookpro', useCaptureThread=True)
+            cam = camera.Camera(0, robottype='macbookpro', useCaptureThread=False)
+        start = time.perf_counter()
+        counter = -1
+        while True:
+            counter += 1
+            Fps = counter / (time.perf_counter() - start)
+            print(f"Fps: {Fps}")
+            print(f"Total time: {time.perf_counter() - start}")
+            # Move the robot according to user input (only for testing)
+            action = cv2.waitKey(10)
+            if action == ord('q'): # Quit
+                break
+            
+            if not isRunningOnArlo():
+                if action == ord('w'): # Forward
+                    velocity += 4.0
+                elif action == ord('x'): # Backwards
+                    velocity -= 4.0
+                elif action == ord('s'): # Stop
+                    velocity = 0.0
+                    angular_velocity = 0.0
+                elif action == ord('a'): # Left
+                    angular_velocity += 0.2
+                elif action == ord('d'): # Right
+                    angular_velocity -= 0.2
+            else:
+                if hf.IS_DRIVING:
+                    velocity = 39/Fps
+                    angular_velocity = 0.0
+                elif hf.IS_TURNING_LEFT:
+                    velocity = 0.0
+                    angular_velocity = 0.79 / Fps
+                elif hf.IS_TURNING_RIGHT:
+                    velocity = 0.0
+                    angular_velocity = - (0.79 / Fps)      
+                else:
+                    velocity = 0
+                    angular_velocity = 0
+                
+            for item in particles:
+                delta_x = (velocity * math.cos(item.theta))
+                delta_y = (velocity * math.sin(item.theta))
+                delta_theta = angular_velocity
+                move_particle(item, delta_x, delta_y, delta_theta)
+
+            add_uncertainty(particles, 1, 0.05)
+
+            # Use motor controls to update particles
+            # XXX: Make the robot drive
+            # XXX: You do this
+
+
+            # Fetch next frame
+            colour = cam.get_next_frame()
+
+            # Detect objects
+            objectIDs, dists, angles = cam.detect_aruco_objects(colour)
+            if not isinstance(objectIDs, type(None)):
+                # List detected objects
+                for i in range(len(objectIDs)):
+                    print("Object ID = ", objectIDs[i], ", Distance = ", dists[i], ", angle = ", angles[i])
+                    # XXX: Do something for each detected object - remember, the same ID may appear several times
+
+                # Compute particle weights
+                for i in range(len(particles)):
+                    particle = particles[i]
+                    particle_weight = 1.0  # Initialize particle weight to 1.0
+
+                    for j in range(len(objectIDs)):
+                        if objectIDs[j] in landmarks:
+                            obj = landmarks.get(objectIDs[j])
+                            # Calculate distance weight based on measured_distance
+                            measured_distance = dists[j]
+                            # Calculate angle weight based on measured_angle
+                            measured_angle = -angles[j]
+
+                            d_weight = distance_weight(measured_distance, obj[0], particle.x, obj[1], particle.y, d_i(obj[0], particle.x, obj[1], particle.y))
+
+                            a_weight = angle_weight(measured_angle, fi_i(e_l(obj[0], particle.x, obj[1], particle.y), e_theta(particle.theta)))
+
+                            # Combine distance and angle weights
+                            particle_weight *= d_weight * a_weight
+
+                        particle.setWeight(particle_weight)
+
+                # Resampling using SIR algorithm
+                new_particles = []
+                total_weight = sum(particle.weight for particle in particles)
+
+                for i in range(num_particles):
+                    random_weight = np.random.uniform(0, total_weight)
+                    weight_sum = 0
+
+                    for particle in particles:
+                        weight_sum += particle.weight
+
+                        if weight_sum >= random_weight:
+                            new_particle = Particle(particle.x, particle.y, particle.theta, particle.weight)  # Create a new particle with the same state
+                            new_particles.append(new_particle)
+                            break
+
+                particles = new_particles  # Update the particles with the resampled set
+
+                # Draw detected objects
+                cam.draw_aruco_objects(colour)
+            else:
+                # No observation - reset weights to uniform distribution
+                for p in particles:
+                    p.setWeight(1.0/num_particles)
+
+            est_pose = estimate_pose(particles) # The estimate of the robots current pose
+            pose = est_pose
+            print("\n ---- Estimated pose ----\n\tX:\t" + str(est_pose.getX()) + "\n\tY:\t" + str(est_pose.getY()) + "\n\tA:\t" + str(est_pose.getTheta()))
+
+            if showGUI:
+                # Draw map
+                draw_world(est_pose, particles, world)
+
+                # Show frame
+                cv2.imshow(WIN_RF1, colour)
+
+                # Show world
+                cv2.imshow(WIN_World, world)
+
+
     
-            # Show frame
-            cv2.imshow(WIN_RF1, colour)
+    finally: 
+        # Make sure to clean up even if an exception occurred
 
-            # Show world
-            cv2.imshow(WIN_World, world)
+        # Close all windows
+        cv2.destroyAllWindows()
 
-    
-  
-finally: 
-    # Make sure to clean up even if an exception occurred
-    
-    # Close all windows
-    cv2.destroyAllWindows()
-
-    # Clean-up capture thread
-    cam.terminateCaptureThread()
-
+        # Clean-up capture thread
+        cam.terminateCaptureThread()

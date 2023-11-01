@@ -3,8 +3,11 @@ import robot
 import cv2
 import time
 import numpy as np
-import path_find as pf
+import path_find_copy as pf
 import drive_landmarks as dl
+import threading
+import math
+from ex5 import selflocalize_copy as sf
 
 # L1 = 1      # (0,0)
 # L2 = 2      # (0,300)
@@ -15,9 +18,21 @@ L1 = 4      # (0,0)
 L2 = 9      # (0,300)
 L3 = 8      # (400,0)
 L4 = 3      # (400,300)
+
+l_coords = {
+    L1: (0.0, 0.0),     # Coordinates for landmark 1
+    L2: (0.0, 300.0),   # Coordinates for landmark 2
+    L3: (400.0, 0.0),   # Coordinates for landmark 3
+    L4: (400.0, 300.0), # Coordinates for landmark 4
+}
 LANDMARKS = [L1, L2, L3, L4, L1]
+SEEN_LANDMARKS = []
 OBSTACLES = []
-NEXT_LM = L1
+VISITED_OBSTACLES = []
+CHECKED_LANDMARKS = []
+
+reached_landmark = False
+found_landmark = False
 
 
 arlo = robot.Robot()
@@ -28,53 +43,105 @@ dictionary = cv2.aruco.Dictionary_get(dictionary_type)
 
 camera_matrix = hf.CAMERA_MATRIX
 
+x = threading.Thread(target=sf.self_localize)
+x.start()
+
+def drive_towards_object(angle, dist):
+    global reached_landmark
+    real_angle = angle[2]/np.pi*180   # Converts radians to degrees
+    # Turn towards landmamrk
+    if real_angle < 0:
+        # print("\nTurning right : " + str(real_angle))
+        hf.TurnXDegRight(arlo, real_angle)
+    else:
+        # print("\nTurning left : " + str(real_angle))
+        hf.TurnXDegLeft(arlo, real_angle)
+    # Go to first landmark
+    if dist < 100:
+        hf.GoXCM(arlo, dist, 1, 1)
+        reached_landmark = True
+    else:
+        reached = hf.GoXCM(arlo, dist/2, 1, 1)
+        time.sleep(.25)
+
+def run_RRT():
+    # We know the estimated pose at this point, so we will orient the robot to face upwards
+    
+    return
+
+
 for landmark in LANDMARKS:
     reached_landmark = False
     found_landmark = False
-    while not reached_landmark:
-        # Take picture and find landmarks in picture
-        picam2.capture_file("img.jpg")
-        img = cv2.imread("img.jpg")
-        aruco_corners, ids, rejectedImgPoints = cv2.aruco.detectMarkers(img, dictionary)
-        ids = np.unique(ids)
+    degrees = 0
+    target = 'landmark'
+    while len(SEEN_LANDMARKS) < 2:
+        CHECKED_LANDMARKS = []
+        ids = sf.objectIDs
+        dists = sf.dists
+        angles = sf.angles
+        unique_ids = np.unique(ids)
         # OBSTACLES = dl.Add_Landmarks_From_Image(aruco_corners, camera_matrix)
         # Check if there are no ids
-        if not ids is None:
+        if not unique_ids is None:
             # Check all ids in the picture
-            for id in ids:
-                # Check if current id is the landmark we are driving towards
-                if id == landmark and not reached_landmark: # and id == NEXT_LM:
-                    found_landmark = True
-                    rvecs, tvecs, objPoints = cv2.aruco.estimatePoseSingleMarkers(aruco_corners, 145, camera_matrix, None)
-                    print(tvecs)
-                    angle = np.arccos(tvecs[0][0] / np.linalg.norm(tvecs[0][0]) * np.array([0,0,1]))
-                    real_angle = angle[2]/np.pi*180
-                    # Turn towards landmamrk
-                    if tvecs[0][0][0] > 0:
-                        # print("\nTurning right : " + str(real_angle))
-                        hf.TurnXDegRight(arlo, real_angle)
+            for id in unique_ids:
+                if id not in CHECKED_LANDMARKS:
+                    CHECKED_LANDMARKS.append(id)
+                    if id in LANDMARKS and id not in SEEN_LANDMARKS:
+                        SEEN_LANDMARKS.append(id)
+                    elif id not in LANDMARKS and id not in OBSTACLES:
+                        OBSTACLES.append(id)
+                    # Check if current id is the landmark we are driving towards
+                    # This code will run if we can see the next landmark
+                    if target == 'landmark':
+                        if id == landmark and not reached_landmark: 
+                            found_landmark = True
+                            drive_towards_object(angles[ids.index(id)], dists[ids.index(id)])
                     else:
-                        # print("\nTurning left : " + str(real_angle))
-                        hf.TurnXDegLeft(arlo, real_angle)
-                    
-                    # Go to first landmark
-                    dist = tvecs[0][0][2]/10
-                    if dist < 100:
-                        hf.GoXCM(arlo, dist, 1, 1)
-                        reached_landmark = True
-                    else:
-                        reached = hf.GoXCM(arlo, dist/2, 1, 1)
-                        time.sleep(.25)
-                elif not id in OBSTACLES:
-                    # TODO Add landmark to obstacles
-                    OBSTACLES.append(id)
+                        if id not in VISITED_OBSTACLES and id not in LANDMARKS:
+                            drive_towards_object(angles[ids.index(id)], dists[ids.index(id)])
+                            target = 'landmark'
+                            degrees = 0
         if not reached_landmark and not found_landmark:
-
-            
+            #Spins 360 degrees and checks for landmarks 
             hf.TurnXDegLeft(arlo, 40)
             time.sleep(0.25)
-        
+            degrees += 40
+            if degrees > 360:
+                #If no landmark is found, drive to random obstacle
+                target = 'obstacle'
+        time.sleep(10)
 
+        # Face upwards
+        hf.TurnXDegLeft(arlo, sf.pose.getTheta())
+
+        time.sleep(0.5)
+
+    while True:
+        ids = sf.objectIDs
+        dists = sf.dists
+        angles = sf.angles
+        ids = np.unique(ids)
+        pos_list = []
+        for id in ids:
+            # X = dist * cos(angle)
+            # Y = dist * sin(angle)
+            if id != landmark:
+                pos_list.append([sf.pose.getX() + (dists[ids.index(id)] * np.cos(angles[ids.index(id)])), sf.pose.getY() + (dists[ids.index(id)] * np.sin(angles[ids.index(id)]))])
+            
+        temp_path = pf.find_path(origin=(sf.pose.getX(), sf.pose.getY()), 
+                                landmarks=pos_list, 
+                                goal=l_coords(landmark),                                   
+                                grid_size_x_neg=-100, 
+                                grid_size_x_pos=500, 
+                                grid_size_y_neg=-100, 
+                                grid_size_y_pos=400)
+     
+        path = pf.optimize_path_rrt(temp_path, lmarks=pos_list)
+        if len(temp_path) == 2:
+            break
+        dl.Drive_Path(path[0], math.degrees(sf.pose.getTheta()))
 
 
 
