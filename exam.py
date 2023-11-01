@@ -37,7 +37,7 @@ for landmark in LANDMARKS:
         img = cv2.imread("img.jpg")
         aruco_corners, ids, rejectedImgPoints = cv2.aruco.detectMarkers(img, dictionary)
         ids = np.unique(ids)
-        OBSTACLES = dl.Add_Landmarks_From_Image(aruco_corners, camera_matrix)
+        # OBSTACLES = dl.Add_Landmarks_From_Image(aruco_corners, camera_matrix)
         # Check if there are no ids
         if not ids is None:
             # Check all ids in the picture

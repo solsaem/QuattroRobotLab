@@ -2,6 +2,8 @@ import numpy as np
 import random_numbers as rn
 import math
 
+SD_dist = 10
+SD_angle = 0.25
 
 class Particle(object):
     """Data structure for storing particle information (state and weight)"""
@@ -86,3 +88,21 @@ def add_uncertainty_von_mises(particles_list, sigma, theta_kappa):
         particle.x += rn.randn(0.0, sigma)
         particle.y += rn.randn(0.0, sigma)
         particle.theta = np.mod(rn.rand_von_mises(particle.theta, theta_kappa), 2.0 * np.pi) - np.pi
+
+def d_i(x_offset, x_value, y_offset, y_value):
+    return np.sqrt(((x_offset - x_value) ** 2) + ((y_offset - y_value) ** 2))
+
+def e_l(x_offset, x_value, y_offset, y_value):
+    return np.array([x_offset - x_value, y_offset - y_value]).T / (d_i(x_offset, x_value, y_offset, y_value))
+
+def e_theta(theta):
+    return np.array([-np.sin(theta), np.cos(theta)]).T
+
+def fi_i(el, etheta):
+    return np.sign(np.dot(el, etheta) * np.arccos(np.dot(el, etheta)))
+
+def distance_weight(measured_distance,x_offset, x_value, y_offset, y_value, di):
+    return (1/np.sqrt(2*np.pi* (SD_dist ** 2)))* np.exp(-((measured_distance - di) ** 2) / (2 * SD_dist ** 2))
+
+def angle_weight(measure_angle, fii):
+    return (1/np.sqrt(2*np.pi* (SD_angle ** 2)))* np.exp(-((measure_angle - fii) ** 2) / (2 * SD_angle ** 2))
