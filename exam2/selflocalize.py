@@ -17,6 +17,7 @@ dists = []
 angles = []
 pose = None
 est_pose = None
+SEEN_LANDMARKS = []
 
 # Flags
 showGUI = True  # Whether or not to open GUI windows

@@ -3,21 +3,21 @@ import robot
 import cv2
 import time
 import numpy as np
-import path_find_copy as pf
+import path_find as pf
 import drive_landmarks as dl
 import threading
 import math
-from ex5 import selflocalize_copy as sf
+from ex5 import selflocalize as sf
 
-# L1 = 1      # (0,0)
-# L2 = 2      # (0,300)
-# L3 = 3      # (400,0)
-# L4 = 4      # (400,300)
+L1 = 1      # (0,0)
+L2 = 2      # (0,300)
+L3 = 3      # (400,0)
+L4 = 4      # (400,300)
 
-L1 = 4      # (0,0)
-L2 = 9      # (0,300)
-L3 = 8      # (400,0)
-L4 = 3      # (400,300)
+# L1 = 4      # (0,0)
+# L2 = 9      # (0,300)
+# L3 = 8      # (400,0)
+# L4 = 3      # (400,300)
 
 l_coords = {
     L1: (0.0, 0.0),     # Coordinates for landmark 1
@@ -26,7 +26,7 @@ l_coords = {
     L4: (400.0, 300.0), # Coordinates for landmark 4
 }
 LANDMARKS = [L1, L2, L3, L4, L1]
-SEEN_LANDMARKS = []
+
 OBSTACLES = []
 VISITED_OBSTACLES = []
 CHECKED_LANDMARKS = []
@@ -75,7 +75,7 @@ for landmark in LANDMARKS:
     found_landmark = False
     degrees = 0
     target = 'landmark'
-    while len(SEEN_LANDMARKS) < 2:
+    while len(sf.SEEN_LANDMARKS) < 2:
         CHECKED_LANDMARKS = []
         ids = sf.objectIDs
         dists = sf.dists
@@ -88,8 +88,8 @@ for landmark in LANDMARKS:
             for id in unique_ids:
                 if id not in CHECKED_LANDMARKS:
                     CHECKED_LANDMARKS.append(id)
-                    if id in LANDMARKS and id not in SEEN_LANDMARKS:
-                        SEEN_LANDMARKS.append(id)
+                    if id in LANDMARKS and id not in sf.SEEN_LANDMARKS:
+                        sf.SEEN_LANDMARKS.append(id)
                     elif id not in LANDMARKS and id not in OBSTACLES:
                         OBSTACLES.append(id)
                     # Check if current id is the landmark we are driving towards
@@ -103,7 +103,7 @@ for landmark in LANDMARKS:
                             drive_towards_object(angles[ids.index(id)], dists[ids.index(id)])
                             target = 'landmark'
                             degrees = 0
-        if not reached_landmark and not found_landmark:
+        if reached_landmark and not found_landmark:
             #Spins 360 degrees and checks for landmarks 
             hf.TurnXDegLeft(arlo, 40)
             time.sleep(0.25)
@@ -142,7 +142,7 @@ for landmark in LANDMARKS:
         if len(temp_path) == 2:
             break
         dl.Drive_Path(path[0], math.degrees(sf.pose.getTheta()))
-
+        break
 
 
         #if not reached_landmark:

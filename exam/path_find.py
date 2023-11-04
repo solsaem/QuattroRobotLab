@@ -26,7 +26,7 @@ X_LIM_POS = 100
 
 # OTHER
 STEPS = 100
-MAX_DIST = 10
+MAX_DIST = 100
 HARD_CODED_LANDMARKS = []
 OBSTACLES = 15
 
@@ -165,8 +165,9 @@ def find_path(origin, landmarks, goal, grid_size_x_neg, grid_size_x_pos, grid_si
     # Initiate points with one point (origin)
     points = [[origin, origin]]
     sortedPoints = [[origin, origin]]
-
+    counter = 0
     while True:
+        print(counter)
         ### Get a random point [int, int]
         rand_point = [np.random.randint(grid_size_x_neg, grid_size_x_pos), np.random.randint(grid_size_y_neg, grid_size_y_pos)]
 
@@ -190,7 +191,7 @@ def find_path(origin, landmarks, goal, grid_size_x_neg, grid_size_x_pos, grid_si
         # If the random point generated is close enough to the goal, 
         # then we will start finding the shortest path going from the goal back to the origin
         # Go from  goal to origin through closest previous point
-        if(hf.calculate_distance(points[-1][0], goal) < 10):
+        if(hf.calculate_distance(points[-1][0], goal) < MAX_DIST):
             final_path = find_final_path(points, origin, goal)
             fully_optimzed = False
             while not fully_optimzed:
@@ -198,6 +199,7 @@ def find_path(origin, landmarks, goal, grid_size_x_neg, grid_size_x_pos, grid_si
 
                 fully_optimzed = final_path == original_path
             return points, final_path
+        counter += 1
 
 def draw_graph(path, lmarks, ylim_neg, ylim_pos, xlim_neg, xlim_pos):
     '''
@@ -278,4 +280,4 @@ def main():
     draw_graph(final_smooth, lmarks, Y_LIM_NEG, Y_LIM_POS, X_LIM_NEG, X_LIM_POS)
 
 # Run code
-main()
+# main()

@@ -7,20 +7,18 @@ import time
 from timeit import default_timer as timer
 from particle import Particle, estimate_pose, add_uncertainty, move_particle, fi_i, e_l, e_theta, distance_weight, angle_weight, d_i
 import math
-
-sys.path.append('..')
 import Help_Functions as hf
-
 
 objectIDs = [] 
 dists = [] 
 angles = []
 pose = None
-est_pose = None
+est_pose = particle.Particle()
+seen_landmarks = []
 
 # Flags
-showGUI = True  # Whether or not to open GUI windows
-onRobot = False  # Whether or not we are running on the Arlo robot
+showGUI = False  # Whether or not to open GUI windows
+onRobot = True  # Whether or not we are running on the Arlo robot
 
 
 def isRunningOnArlo():
@@ -177,8 +175,8 @@ def self_localize():
         while True:
             counter += 1
             Fps = counter / (time.perf_counter() - start)
-            print(f"Fps: {Fps}")
-            print(f"Total time: {time.perf_counter() - start}")
+#            print(f"Fps: {Fps}")
+#            print(f"Total time: {time.perf_counter() - start}")
             # Move the robot according to user input (only for testing)
             action = cv2.waitKey(10)
             if action == ord('q'): # Quit
@@ -198,14 +196,14 @@ def self_localize():
                     angular_velocity -= 0.2
             else:
                 if hf.IS_DRIVING:
-                    velocity = 39/Fps
+                    velocity = 1
                     angular_velocity = 0.0
                 elif hf.IS_TURNING_LEFT:
                     velocity = 0.0
-                    angular_velocity = 0.79 / Fps
+                    angular_velocity = 0.05
                 elif hf.IS_TURNING_RIGHT:
                     velocity = 0.0
-                    angular_velocity = - (0.79 / Fps)      
+                    angular_velocity = -0.05
                 else:
                     velocity = 0
                     angular_velocity = 0
@@ -231,6 +229,8 @@ def self_localize():
             if not isinstance(objectIDs, type(None)):
                 # List detected objects
                 for i in range(len(objectIDs)):
+                    if objectIDs[i] not in seen_landmarks:
+                        seen_landmarks.append(objectIDs[i])
                     print("Object ID = ", objectIDs[i], ", Distance = ", dists[i], ", angle = ", angles[i])
                     # XXX: Do something for each detected object - remember, the same ID may appear several times
 
@@ -282,8 +282,8 @@ def self_localize():
                     p.setWeight(1.0/num_particles)
 
             est_pose = estimate_pose(particles) # The estimate of the robots current pose
-            pose = est_pose
-            print("\n ---- Estimated pose ----\n\tX:\t" + str(est_pose.getX()) + "\n\tY:\t" + str(est_pose.getY()) + "\n\tA:\t" + str(est_pose.getTheta()))
+            if counter % 10 == 0:
+                print("\n ---- Estimated pose ----\n\tX:\t" + str(est_pose.getX()) + "\n\tY:\t" + str(est_pose.getY()) + "\n\tA:\t" + str(math.degrees(est_pose.getTheta())))
 
             if showGUI:
                 # Draw map
