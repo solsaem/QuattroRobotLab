@@ -1,11 +1,10 @@
 import cv2
 import sys
-import particle
+import particle as pt
 import camera
 import numpy as np
 import time
 from timeit import default_timer as timer
-from particle import Particle, estimate_pose, add_uncertainty, move_particle, fi_i, e_l, e_theta, distance_weight, angle_weight, d_i
 import math
 import Help_Functions as hf
 
@@ -13,12 +12,12 @@ objectIDs = []
 dists = [] 
 angles = []
 pose = None
-est_pose = particle.Particle()
+est_pose = pt.Particle()
 seen_landmarks = []
 
 # Flags
-showGUI = False  # Whether or not to open GUI windows
-onRobot = True  # Whether or not we are running on the Arlo robot
+showGUI = True  # Whether or not to open GUI windows
+onRobot = False  # Whether or not we are running on the Arlo robot
 
 
 def isRunningOnArlo():
@@ -56,19 +55,18 @@ CBLACK = (0, 0, 0)
 
 # Landmarks.
 # The robot knows the position of 2 landmarks. Their coordinates are in the unit centimeters [cm].
-landmarkIDs = [11, 1, 2, 3]
+landmarkIDs = [1, 2, 3, 4]
 landmarks = {
-    11: (0.0, 300.0),
     1: (0.0, 0.0),  # Coordinates for landmark 1
     2: (0.0, 300.0),  # Coordinates for landmark 2
     3: (400.0, 0.0), # Coordinates for landmark 3
-#    4: (400.0, 300.0) # Coordinates for landmark 4
+    4: (400.0, 300.0) # Coordinates for landmark 4
 }
 landmark_colors = [CRED, CGREEN, CBLUE, CBLACK] # Colors used when drawing the landmarks
 
 
-SD_dist = 10  # You should set the standard deviation of distance
-SD_angle = 0.25  # You should set the standard deviation of angle
+#SD_dist = 20  # You should set the standard deviation of distance
+#SD_angle = 0.05  # You should set the standard deviation of angle
 
 
 def jet(x):
@@ -125,7 +123,7 @@ def initialize_particles(num_particles):
     particles = []
     for i in range(num_particles):
         # Random starting points. 
-        p = particle.Particle(600.0*np.random.ranf() - 100.0, 600.0*np.random.ranf() - 250.0, np.mod(2.0*np.pi*np.random.ranf(), 2.0*np.pi), 1.0/num_particles)
+        p = pt.Particle(600.0*np.random.ranf() - 100.0, 600.0*np.random.ranf() - 250.0, np.mod(2.0*np.pi*np.random.ranf(), 2.0*np.pi), 1.0/num_particles)
         particles.append(p)
 
     return particles
@@ -149,7 +147,7 @@ def self_localize():
         num_particles = 1000
         particles = initialize_particles(num_particles)
 
-        est_pose = estimate_pose(particles) # The estimate of the robots current pose
+        est_pose = pt.estimate_pose(particles) # The estimate of the robots current pose
 
         # Driving parameters
         velocity = 0.0 # cm/sec
@@ -170,13 +168,7 @@ def self_localize():
         else:
             #cam = camera.Camera(0, robottype='macbookpro', useCaptureThread=True)
             cam = camera.Camera(0, robottype='macbookpro', useCaptureThread=False)
-        start = time.perf_counter()
-        counter = -1
         while True:
-            counter += 1
-            Fps = counter / (time.perf_counter() - start)
-#            print(f"Fps: {Fps}")
-#            print(f"Total time: {time.perf_counter() - start}")
             # Move the robot according to user input (only for testing)
             action = cv2.waitKey(10)
             if action == ord('q'): # Quit
@@ -212,9 +204,9 @@ def self_localize():
                 delta_x = (velocity * math.cos(item.theta))
                 delta_y = (velocity * math.sin(item.theta))
                 delta_theta = angular_velocity
-                move_particle(item, delta_x, delta_y, delta_theta)
+                pt.move_particle(item, delta_x, delta_y, delta_theta)
 
-            add_uncertainty(particles, 1, 0.05)
+            pt.add_uncertainty(particles, 1, 0.05)
 
             # Use motor controls to update particles
             # XXX: Make the robot drive
@@ -231,7 +223,7 @@ def self_localize():
                 for i in range(len(objectIDs)):
                     if objectIDs[i] not in seen_landmarks:
                         seen_landmarks.append(objectIDs[i])
-                    print("Object ID = ", objectIDs[i], ", Distance = ", dists[i], ", angle = ", angles[i])
+                    print("Object ID = ", objectIDs[i], ", Distance = ", dists[i], ", angle = ", math.degrees(angles[i]))
                     # XXX: Do something for each detected object - remember, the same ID may appear several times
 
                 # Compute particle weights
@@ -245,14 +237,14 @@ def self_localize():
                             # Calculate distance weight based on measured_distance
                             measured_distance = dists[j]
                             # Calculate angle weight based on measured_angle
-                            measured_angle = -angles[j]
+                            measured_angle = angles[j]
 
-                            d_weight = distance_weight(measured_distance, obj[0], particle.x, obj[1], particle.y, d_i(obj[0], particle.x, obj[1], particle.y))
+                            d_weight = pt.distance_weight(measured_distance, pt.d_i(obj[0], particle.x, obj[1], particle.y))
 
-                            a_weight = angle_weight(measured_angle, fi_i(e_l(obj[0], particle.x, obj[1], particle.y), e_theta(particle.theta)))
+                            a_weight = pt.angle_weight(measured_angle, pt.fi_i(pt.e_l(obj[0], particle.x, obj[1], particle.y), pt.e_theta(particle.theta)))
 
                             # Combine distance and angle weights
-                            particle_weight *= d_weight * a_weight
+                            particle_weight = d_weight * a_weight
 
                         particle.setWeight(particle_weight)
 
@@ -268,7 +260,7 @@ def self_localize():
                         weight_sum += particle.weight
 
                         if weight_sum >= random_weight:
-                            new_particle = Particle(particle.x, particle.y, particle.theta, particle.weight)  # Create a new particle with the same state
+                            new_particle = pt.Particle(particle.x, particle.y, particle.theta, particle.weight)  # Create a new particle with the same state
                             new_particles.append(new_particle)
                             break
 
@@ -281,9 +273,8 @@ def self_localize():
                 for p in particles:
                     p.setWeight(1.0/num_particles)
 
-            est_pose = estimate_pose(particles) # The estimate of the robots current pose
-            if counter % 10 == 0:
-                print("\n ---- Estimated pose ----\n\tX:\t" + str(est_pose.getX()) + "\n\tY:\t" + str(est_pose.getY()) + "\n\tA:\t" + str(math.degrees(est_pose.getTheta())))
+            est_pose = pt.estimate_pose(particles) # The estimate of the robots current pose
+            print("\n ---- Estimated pose ----\n\tX:\t" + str(est_pose.getX()) + "\n\tY:\t" + str(est_pose.getY()) + "\n\tA:\t" + str(math.degrees(est_pose.getTheta())))
 
             if showGUI:
                 # Draw map
@@ -305,3 +296,5 @@ def self_localize():
 
         # Clean-up capture thread
         cam.terminateCaptureThread()
+
+self_localize()

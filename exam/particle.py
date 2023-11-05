@@ -2,8 +2,8 @@ import numpy as np
 import random_numbers as rn
 import math
 
-SD_dist = 20
-SD_angle = 0.05
+SD_dist = 10
+SD_angle = 0.2
 
 class Particle(object):
     """Data structure for storing particle information (state and weight)"""
@@ -101,7 +101,7 @@ def e_theta(theta):
 def fi_i(el, etheta):
     return np.sign(np.dot(el, etheta) * np.arccos(np.dot(el, etheta)))
 
-def distance_weight(measured_distance,x_offset, x_value, y_offset, y_value, di):
+def distance_weight(measured_distance, di):
     return (1/np.sqrt(2*np.pi* (SD_dist ** 2)))* np.exp(-((measured_distance - di) ** 2) / (2 * SD_dist ** 2))
 
 def angle_weight(measure_angle, fii):
