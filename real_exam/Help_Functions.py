@@ -69,7 +69,6 @@ def GoXCM(rob, dist, dir, speed):
             GoAround(rob, "right")
             return False
         IS_DRIVING = True
-        #print(f"DRIVING {dist} cm forwards")
         print(rob.go_diff(SPEED_LT * speed, SPEED_RT * speed, dir, dir))
     Stop(rob)
     return True
@@ -121,7 +120,7 @@ def calculate_angle(x, y, x_prev, y_prev):
 
     return angle_degrees
 
-
+# Avoid obsstacles when side sensors de
 def GoAround(rob, sensor):
     if sensor == 'left':
         TurnXDegRight(rob, 90)
