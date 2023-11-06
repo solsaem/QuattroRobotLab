@@ -57,15 +57,15 @@ def GoXCM(rob, dist, dir, speed):
         right = rob.read_right_ping_sensor()
         front = rob.read_front_ping_sensor()
         if right < 300:
-            print("right too close")
+            print("right too close \U0001F534")
             GoAround(rob, "right")
             return False
         if left < 300:
-            print("left too close")
+            print("left too close \U0001F534")
             GoAround(rob, "left")
             return False
         if front < 150:
-            print("front too close")
+            print("front too close \U0001F534")
             GoAround(rob, "right")
             return False
         IS_DRIVING = True
@@ -120,7 +120,7 @@ def calculate_angle(x, y, x_prev, y_prev):
 
     return angle_degrees
 
-# Avoid obsstacles when side sensors de
+### Avoid obsstacles when side sensors de
 def GoAround(rob, sensor):
     if sensor == 'left':
         TurnXDegRight(rob, 90)

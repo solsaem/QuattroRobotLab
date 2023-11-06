@@ -57,7 +57,7 @@ def drive_random(landmark):
                     # Go to first landmark
                     dist = tvecs[list(ids).index(id)][0][2]/10
                     if dist < 100:
-                        print("Going sideways")
+                        print("Going sideways \U0001F535")
                         VISITED_OBSTACLES.append(id)
                         degrees = 0
                         hf.TurnXDegLeft(arlo, 90)
